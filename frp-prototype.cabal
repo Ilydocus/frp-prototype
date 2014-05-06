@@ -64,7 +64,8 @@ executable frp-prototype-mme
                        binary >= 0.5,
                        transformers >= 0.3,
                        random >= 1.0,
-                       containers >= 0.5
+                       containers >= 0.5,
+                       time >= 1.4.0.1
 
                        
   

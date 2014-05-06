@@ -23,6 +23,8 @@ import S1Messages
 import UeContextStates
 import Identifiers
 
+import LogTools
+
 type MMEMap = Map.Map Int UeContext_mme
 
 
@@ -66,7 +68,7 @@ fire = snd
 -- Set up the event network
 setupNetwork :: forall t. Frameworks t =>
    EventSource (S1APMessage,Socket) -> IO (TVar MMEMap)-> Handle -> Moment t ()
-setupNetwork message database= do
+setupNetwork message database logh = do
 
   --Obtain events corresponding to the two commands
   eMessage{-:: Event t (RrcMessage,Socket)-} <- fromAddHandler (addHandler message)
@@ -111,6 +113,9 @@ setupNetwork message database= do
     eUplinkNASTransport ::Event t (S1APMessage,Socket)
     eUplinkNASTransport = filterE (\t -> (incomingMessageType t) ==UplinkTrans) eMessage
 
+    eInitialContextSetupResponse ::Event t (S1APMessage,Socket)
+    eInitialContextSetupResponse = filterE (\t -> (incomingMessageType t) ==InitContextRes) eMessage
+
     --Create messages to send back to the eNodeB
     eSendRepInitialMessage :: Event t (S1APMessage, Socket)
     eSendRepInitialMessage = createMessageInitialSetup <$>eInitialUEMessage
@@ -149,7 +154,9 @@ setupNetwork message database= do
   --reactimate $ sendResponse (RRCConnectii True) <$> eMessageRrcCC
   --reactimate $ putStrLn  "ConnectionSetup is complete " <$ eMessageRrcCC
     --add an output event?
-
+  reactimate $ writeToLog logh . showMessageNumber <$> eMessage
+  --reactimate $ hClose logh <$  eSendRepReconfComplete
+  reactimate $ (finalLog logh <$> bUeContexts)  <@> eInitialContextSetupResponse
     
 showNbMessages nbMessages = "Nb of messages received: " ++ show nbMessages
 showMessageNumber (number, socket) = "MME: Message from UE " ++ show number ++ " has arrived"
@@ -162,3 +169,18 @@ defaultUeContext mmeId securityKey= UeContext_mme{
   securityKey_mme = securityKey
   }
 
+defaultEmptyContext = UeContext_mme{
+  mmeUES1APid = -1,
+  securityKey_mme = -1
+  }
+
+finalLog :: Handle -> IO(TVar MMEMap) -> (S1APMessage, Socket) -> IO()
+finalLog handle behaviorContent (message, _) = do
+  tempDatabase <- liftIO behaviorContent
+  map <- readTVarIO tempDatabase
+  let
+    key = eNB_UE_S1AP_Id message
+    --lastContext :: UeContext_eNB
+    lastContext = Map.findWithDefault defaultEmptyContext key map
+  writeToLog handle ("Context at the end : "++ show lastContext)
+  hClose handle
