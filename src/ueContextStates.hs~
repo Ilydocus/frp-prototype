@@ -1,0 +1,33 @@
+{-# LANGUAGE DeriveGeneric #-}
+module ueContextStates
+       ( UeContext_eNB (..)
+       , UeContext_mme (..)
+       , decode
+       , UeIdRntiType (..)
+       , RAT (..)
+       , DedicatedInfoType (..)  
+       ) where
+
+data UeContext_eNB = UeContext_eNB{
+  rrcState :: RRCState,
+  c_rnti :: !Int,
+  imsi :: !String,
+  srbIdentity :: !Int,
+  eNBUES1APid :: !Int,
+  ratCapabilities :: !RAT,
+  securityKey :: !Int,
+  epsBearerId :: !Int  
+  }
+
+data UeContext_mme = UeContext_mme{
+  mmeUES1APid :: !Int,
+  securityKey :: !Int
+  }
+
+data UeContext_ue = UeContext_ue{
+  imsi :: !String,
+  securityKey :: !Int,
+  srbId :: !Int
+  }
+
+                     

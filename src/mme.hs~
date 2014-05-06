@@ -1,0 +1,134 @@
+{-# LANGUAGE ScopedTypeVariables #-} --allows "forall t. NetworkDescription t"
+module Main (main) where
+
+import Control.Monad (when)
+import System.IO
+
+import Reactive.Banana as R
+import Reactive.Banana.Frameworks as R
+
+--Socket related
+import Network hiding (accept)
+import Network.Socket hiding (send, recv)
+import Network.Socket.ByteString.Lazy
+
+import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Monad
+
+--import RrcMessages
+import S1Messages
+
+
+main :: IO ()
+main = do
+  sources <- newAddHandler
+  network <- compile $ setupNetwork sources
+  actuate network
+  eventLoop sources -- pourquoi a la fin?
+
+--Read commands and fire corresponding events (Approximation nb1)
+eventLoop :: EventSource (S1APMessage, Socket)-> IO ()
+eventLoop message = loop
+   where
+     loop = withSocketsDo $ do
+       listenSocket <- listenOn $ PortNumber 43001
+       forever $ do
+         (connectionSocket, _) <- accept listenSocket
+         --forkIO $ do
+         forever $ do
+           messDec <- decode <$> recv connectionSocket 1024
+           (fire message (messDec,connectionSocket))
+     
+{-----------------------------------------------------
+     Event Sources
+------------------------------------------------------}
+type EventSource a = (AddHandler a, a -> IO())
+
+addHandler :: EventSource a -> AddHandler a
+addHandler = fst
+
+fire :: EventSource a -> a -> IO()
+fire = snd
+
+{-----------------------------------------------------
+     Program Logic
+------------------------------------------------------}
+
+-- Set up the event network
+setupNetwork :: forall t. Frameworks t =>
+   EventSource (S1APMessage,Socket) -> Moment t ()
+setupNetwork message= do
+
+  --Obtain events corresponding to the two commands
+  eMessage{-:: Event t (RrcMessage,Socket)-} <- fromAddHandler (addHandler message)
+
+  let
+    --How to capture the state? Compare to the slot machine
+    --For now, number of messages received is the state
+    -- both the eMessage 1 and the emessage2 events add one to the state
+    bNbMessages :: Behavior t Int
+    eNbMessages :: Event t Int
+    (eNbMessages, bNbMessages) = mapAccum 0 . fmap (\f x -> (f x, f x)) $
+                     (addMessage <$ eMessage)
+                         
+    --Functions to change the state
+    addMessage = (+ 1)
+
+    --Inner functions to fire a specific event depending on the one that was received
+    --one needeed per incoming message
+
+    --Functions firing a specific id depending on the incoming message type
+    incomingMessageType :: (S1APMessage, Socket) -> S1MessageType
+    incomingMessageType event = case event of
+      (S1APInitialUEMessage a b c,_) -> InitUEMess
+      (S1APInitialContextSetupRequest a b c d,_)-> InitContextReq
+      (S1APInitialContextSetupResponse a b c,_)-> InitContextRes
+      (UplinkNASTransport a, _)-> UplinkTrans
+
+    --Fire specific intern event for each message  
+    eInitialUEMessage ::Event t (S1APMessage,Socket)
+    eInitialUEMessage = filterE (\t -> (incomingMessageType t) ==InitUEMess) eMessage
+
+    eUplinkNASTransport ::Event t (S1APMessage,Socket)
+    eUplinkNASTransport = filterE (\t -> (incomingMessageType t) ==UplinkTrans) eMessage
+
+{-    eMessageRrcCR ::Event t (RrcMessage,Socket)
+    eMessageRrcCR = filterE rrcCR eMessage
+
+    rrcCR:: (RrcMessage, Socket)-> Bool
+    rrcCR x = case x of
+      (RRCConnectionRequest m b c, _)-> True
+      _ -> False
+
+    eMessageRrcCC ::Event t (RrcMessage,Socket)
+    eMessageRrcCC = filterE rrcCC eMessage
+
+    rrcCC:: (RrcMessage, Socket)-> Bool
+    rrcCC x = case x of
+      (RRCConnectionSetupComplete m, _)-> True
+      _ -> False
+
+  --case eMessage of
+  -- (RAPreamble m, Socket s) -> eMessageRAPreamble m s
+
+    -}
+
+    --Output: Is printed in the order of definition?
+  reactimate $ putStrLn . showNbMessages <$> eNbMessages
+  reactimate $ putStrLn . showMessageNumber <$> eMessage
+ -- reactimate $ sendResponse (RAResponse RA_RNTI 12 21) <$> eMessageRAPreamble
+  --reactimate $ sendResponse (RRCConnectionSetup C_RNTI 45 54) <$> eMessageRrcCR
+  reactimate $ putStrLn "InitialUEMessage received " <$ eInitialUEMessage
+  reactimate $ sendResponse (S1APInitialContextSetupRequest 12 13 15 17) <$> eInitialUEMessage
+  --reactimate $ sendResponse (RRCConnectii True) <$> eMessageRrcCC
+  --reactimate $ putStrLn  "ConnectionSetup is complete " <$ eMessageRrcCC
+    --add an output event?
+
+    
+showNbMessages nbMessages = "Nb of messages received: " ++ show nbMessages
+showMessageNumber (number, socket) = "MME: Message from UE " ++ show number ++ " has arrived"
+sendResponse message (number,sock) = do
+                             _ <- send sock $ encode message
+                             return ()
+

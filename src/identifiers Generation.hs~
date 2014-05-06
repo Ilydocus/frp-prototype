@@ -1,0 +1,12 @@
+module identifiers (
+             IMSI (..)
+                   )
+       where
+
+generateIMSI :: 
+generateIMSI
+
+data IMSI = IMSI {
+  
+
+                 }
