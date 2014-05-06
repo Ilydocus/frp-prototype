@@ -32,29 +32,33 @@ import qualified Data.ByteString as B
 import Data.Word
 import Data.Binary.Put
 
+import LogTools
+
 main :: IO ()
 main =
   withSocketsDo $ do    
+
+    logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn) [1..1] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..1] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
     
     let diff = endTime `diffUTCTime` startTime
     printf "Time for the UEs procedures: %s\n"  (show diff)
 
-powerOn :: Int -> IO ()
-powerOn ueId =
+powerOn :: Handle -> Int -> IO ()
+powerOn logh ueId =
   bracket (connectedSocket "127.0.0.1" "43000")
-          close powerOn'
+          close (powerOn' logh)
   where
-    powerOn' :: Socket -> IO ()
-    powerOn' sock = do
+    powerOn' :: Handle -> Socket -> IO ()
+    powerOn' logh sock = do
       --create sources
       sources <- newAddHandler
       --compile and start network
-      network <- compile $ setupNetwork sources ueId
+      network <- compile $ setupNetwork sources ueId logh
       actuate network
       -- specific event loop
       eventLoop sources sock ueId
@@ -120,8 +124,8 @@ fire = snd
 
 -- Set up the event network
 setupNetwork :: forall t. Frameworks t =>
-   EventSource (RrcMessage,Socket) -> Int -> Moment t ()
-setupNetwork message ueId = do
+   EventSource (RrcMessage,Socket) -> Int -> Handle -> Moment t ()
+setupNetwork message ueId logh = do
 
   --Obtain events corresponding to the eNodeB
   eMessage{-:: Event t (RrcMessage,Socket) -}<- fromAddHandler (addHandler message)
@@ -309,6 +313,9 @@ setupNetwork message ueId = do
   reactimate $ sendResponse <$> eSendMessSecComplete
   reactimate $ sendResponse <$> eSendMessUeCapInf
   reactimate $ sendResponse <$> eSendMessReconfComplete
+  --Log
+  reactimate $ writeToLog logh . showMessageNumber <$> eMessage
+  reactimate $ (finalLog logh <$> bUeState)  <@> eSendMessReconfComplete 
 
     
 showNbMessages nbMessages = "Nb of messages received in this UE: " ++ show nbMessages
@@ -341,3 +348,8 @@ defaultUeState seed = UeContext_ue{
   securityKey_ue = seed*18,
   srbId = "0"
   }
+
+finalLog :: Handle -> UeContext_ue -> (RrcMessage, Socket) -> IO()
+finalLog handle state (message, _) = do
+  writeToLog handle ("Context at the end : "++ show state)
+  hClose handle

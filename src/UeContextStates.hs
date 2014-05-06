@@ -44,4 +44,8 @@ data UeContext_ue = UeContext_ue{
   srbId :: !String
   }
 
+instance Show UeContext_ue
+  where
+    show m = "UeContext_ue {IMSI: "++ show (imsi_ue m) ++ " Security Key: " ++ show (securityKey_ue m) ++ " SRB ID: " ++ show (srbId m)++ "}"
+
                      
