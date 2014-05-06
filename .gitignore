@@ -10,3 +10,6 @@ cabal-dev
 cabal.sandbox.config
 cabal.config
 *~
+log_enb.txt
+log_mme.txt
+log_ue.txt
