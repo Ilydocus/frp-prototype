@@ -28,6 +28,7 @@ data RrcMessage =
                ,ueIdentity :: !IMSI}
   | RRCConnectionReject {ueCrnti :: !Int
                         ,waitingTime :: !Int}
+  | RRCConnectionAccept {ueCrnti :: !Int}
   | RRCConnectionSetup {ueIdRntiType :: UeIdRntiType
                ,ueIdRntiValue :: !Int
                ,srbIdentity :: !String}
@@ -102,9 +103,17 @@ instance Binary RrcMessage
                                      put a
                                      put b
                      UplinkInformationTransfer a b -> do
+                                     putWord8 16
+                                     put a
+                                     put b
+                     RRCConnectionReject a b -> do
                                      putWord8 14
                                      put a
                                      put b
+                     RRCConnectionAccept a -> do
+                                     putWord8 15
+                                     put a
+                     
 
                     
            {-put (RAPreamble m) = do
@@ -171,10 +180,17 @@ instance Binary RrcMessage
                         a<-get
                         b<-get
                         return (RRCConnectionReconfigurationComplete a b)
-                      14 -> do
+                      16 -> do
                         a<-get
                         b<-get
                         return (UplinkInformationTransfer a b)
+                      14 -> do
+                        a<-get
+                        b<-get
+                        return (RRCConnectionReject a b)
+                      15 -> do
+                        a<-get
+                        return (RRCConnectionAccept a)
                  
                          {-get::(RAResponse i) = do i<- get
                                   return (RAResponse i)-}

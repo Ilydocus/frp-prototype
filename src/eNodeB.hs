@@ -39,7 +39,7 @@ type ENBMap = Map.Map Int UeContext_eNB
 
 data Message =
     RrcMessageType (RrcMessage,Socket)
-  | S1APMessageType (S1APMessage,Socket)
+  | S1APMessageType (S1APMessage,Socket,RrcMessage, Socket)
     deriving (Eq,Show)
 
 main :: IO ()
@@ -525,10 +525,12 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     handleReconfComplete behaviorContent (message, ueSocket, mmeSocket) = 
       if (epsRadioBearerActivated message) then do
         enbId <- liftIO $ getEnbId behaviorContent crnti
-        return (S1APMessageType(S1APInitialContextSetupResponse enbId (genRandId 5 (enbId +45)),mmeSocket))
+        --liftIO $ close ueSocket
+        return (S1APMessageType(S1APInitialContextSetupResponse enbId (genRandId 5 (enbId +45)),mmeSocket,(RRCConnectionAccept crnti),ueSocket))
         else do
          _ <- changeStateToIdle crnti behaviorContent
          return (RrcMessageType(RRCConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket))
+         --liftIO $ close ueSocket
       where
         crnti = ueCRntiValue message
         
@@ -594,9 +596,12 @@ sendResponseToReconf x = do
   case messageComp of
     RrcMessageType (message,ueSock) -> do
                                          _ <- send ueSock $ encode message
+                                         liftIO $ close ueSock
                                          return ()
-    S1APMessageType (message,mmeSock) -> do
-          _ <- send mmeSock $ encode message
+    S1APMessageType (messageMme,mmeSock, messageUe, ueSock) -> do
+          _ <- send mmeSock $ encode messageMme
+          _ <- send ueSock $ encode messageUe
+          liftIO $ close ueSock
           return ()
     
                              
@@ -719,4 +724,4 @@ finalLog handle behaviorContent (message, _, _) = do
     --lastContext :: UeContext_eNB
     lastContext = Map.findWithDefault defaultEmptyContext key map
   writeToLog handle ("Context at the end : "++ show lastContext)
-  hClose handle
+  --hClose handle

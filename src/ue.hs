@@ -22,6 +22,7 @@ import Reactive.Banana.Frameworks as R
 import System.IO
 
 import Control.Monad
+--import Control.Monad.Trans.Loop
 
 import System.Random
 
@@ -41,9 +42,10 @@ main =
     logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn logh) [1..1] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..2] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
+    hClose logh
     
     let diff = endTime `diffUTCTime` startTime
     printf "Time for the UEs procedures: %s\n"  (show diff)
@@ -71,6 +73,7 @@ powerOn logh ueId =
 
       --RRCConnectionSetup _ <- decode <$> recv sock 10240
       --_ <- send sock $ encode (RRCConnectionComplete True)
+      putStrLn "exit ue"
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket
@@ -83,18 +86,26 @@ connectedSocket host port = do
 
 --Read commands and fire corresponding events (Approximation nb1)
 eventLoop :: EventSource (RrcMessage,Socket)-> Socket-> Int -> IO ()
-eventLoop message  sock ueId = loop
-   where
-     loop = withSocketsDo $ do
+eventLoop message  sock ueId = withSocketsDo $ do
        --Send first message
        --fire message (RAPreamble 47,sock) --forkIO
        _ <- send sock $ encode (RAPreamble RA_RNTI ueId)
        --Wait for response
-       forever $ do
+       loop
+       where loop = do
+               
+       --forever $ do
          --let messDecrypt = liftIO $ (crypt CTR (B.concat (BL.toChunks(encode (ueId*18)))) (B.concat (BL.toChunks(encode (0::Int)))) Decrypt  <$> recv sock 1024)
          --messDec <- decode (crypt CTR (B.concat (BL.toChunks(encode (ueId*18)))) (B.concat (BL.toChunks(encode (0::Int)))) Decrypt  <$> recv sock 1024) --messDecrypt --(decryptResponse (ueId*18) <$> recv sock 1024)
-         messDec <- decode <$> recv sock 1024
-         fire message (messDec,sock) --forkIO?
+                messDec <- decode <$> recv sock 1024
+                fire message (messDec,sock) --forkIO?
+                --exit the loop
+                when (notlastMessage messDec) loop
+                where notlastMessage mess = case mess of
+                        (RRCConnectionAccept _ ) -> False
+                        (RRCConnectionReject _ _) -> False
+                        _ -> True
+         
          --send sock $ encode (RAPreamble 45)--non execute
          
       {- putStr "> "
@@ -237,6 +248,14 @@ setupNetwork message ueId logh = do
       (RRCConnectionReconfiguration a b, _)-> True
       _ -> False
 
+    eMessageRrcConnAccept ::Event t (RrcMessage,Socket)
+    eMessageRrcConnAccept = filterE connAccept eMessage
+
+    connAccept:: (RrcMessage, Socket)-> Bool
+    connAccept x = case x of
+      (RRCConnectionAccept a, _)-> True
+      _ -> False
+
     --Test
     eMessageRAP ::Event t (RrcMessage,Socket)
     eMessageRAP = filterE raPr eMessage
@@ -352,4 +371,4 @@ defaultUeState seed = UeContext_ue{
 finalLog :: Handle -> UeContext_ue -> (RrcMessage, Socket) -> IO()
 finalLog handle state (message, _) = do
   writeToLog handle ("Context at the end : "++ show state)
-  hClose handle
+

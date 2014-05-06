@@ -183,4 +183,4 @@ finalLog handle behaviorContent (message, _) = do
     --lastContext :: UeContext_eNB
     lastContext = Map.findWithDefault defaultEmptyContext key map
   writeToLog handle ("Context at the end : "++ show lastContext)
-  hClose handle
+  --hClose handle
