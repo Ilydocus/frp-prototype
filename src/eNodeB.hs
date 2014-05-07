@@ -159,16 +159,17 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     -- State of the eNodeB is one UEContext per UE
     --database = newTVar Map.empty 
     bUeContext :: Behavior t (IO (TVar ENBMap))
+    bUeContext = pure database
     --eUeContext :: Event t (TVar ENBMap)
     --(eUeContext, bUeContext) = mapAccum database  . fmap (\f x -> (f x, f x)) $
            --(((initUEContext ) <$> eMessageRAPreamble))
            -- `union` () )
     --utiliser le stepper juste pour le debut?
     --peut etre qu'un pure pourrait marcher aussi, a voir 
-    eMessageRAPreambleDone = (((initUEContext database) <$> eSendRepRAPreamble))
-    --bUeContext = stepper ( database) (eMessageRAPreambleDone ` union`  (addImsi database <$> eMessageRrcCR))
-    eAddImsi = (addImsi database <$> eMessageRrcCR)
-    bUeContext = pure database
+    eMessageRAPreambleDone = (((fakeinitUEContext database) <$> eSendRepRAPreamble))
+    --bUeContext = stepper ( database) (eMessageRAPreambleDone ` union`  (fakeImsi database <$> eMessageRrcCR))
+    --eAddImsi = (addImsi database <$> eMessageRrcCR)
+    
 
     --current message
     --bCurrentRrcMessage :: Behavior t (RrcMessage,Socket,Socket)
@@ -187,11 +188,22 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
       --newData <-readTVarIO database
       --return the entry that was created ?
       database-}
-    initUEContext :: IO(TVar ENBMap) -> (RrcMessage, Socket) -> IO (TVar ENBMap)
+    initUEContext :: IO(TVar ENBMap) -> (RrcMessage, Socket) -> IO ()
     initUEContext database (message, ueSocket) = do
+      putStrLn $ "init ue context for"++ show (ueTempCRntiValue message)
       newData <- liftIO $ database
       --atomically $ modifyTVar (newData ) (\eNBmap -> Map.insert (ueIdRntiValue message) (defaultUeContext (ueTempCRntiValue message)) eNBmap )
       atomically $ modifyTVar (newData ) (\eNBmap -> Map.insert (ueTempCRntiValue message) (defaultUeContext (ueTempCRntiValue message)) eNBmap )
+      --newData <-readTVarIO database
+      --return the entry that was created ?
+      --database
+
+    fakeinitUEContext :: IO(TVar ENBMap) -> (RrcMessage, Socket) -> IO (TVar ENBMap)
+    fakeinitUEContext database (message, ueSocket) = do
+      putStrLn $ "fake init ue context for"++ show (ueTempCRntiValue message)
+      --newData <- liftIO $ database
+      --atomically $ modifyTVar (newData ) (\eNBmap -> Map.insert (ueIdRntiValue message) (defaultUeContext (ueTempCRntiValue message)) eNBmap )
+      --atomically $ modifyTVar (newData ) (\eNBmap -> Map.insert (ueTempCRntiValue message) (defaultUeContext (ueTempCRntiValue message)) eNBmap )
       --newData <-readTVarIO database
       --return the entry that was created ?
       database
@@ -342,19 +354,70 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
 
     --addImsi :: IO(TVar ENBMap) ->(RrcMessage, Socket,Socket)->IO ()
     addImsi behaviorContent (message,_,_)= do
-      putStrLn "Adding imsi to the state"
+      putStrLn $ "Adding imsi to the state"++ show (ueIdRntiValueCR message)
       tempDatabase <- liftIO behaviorContent
       print (message)
       map1<- readTVarIO tempDatabase
-      --print map1 --ok, bien modifie
+      print map1 --ok, bien modifie
       let
        oldCon = Map.findWithDefault (defaultEmptyContext) (ueIdRntiValueCR message) map1
       --print oldCon
-      atomically $ modifyTVar tempDatabase (\ueMap -> Map.insert (ueIdRntiValueCR message)(addImsi' (ueIdentity message)oldCon)  ueMap) 
+      --atomically $ modifyTVar tempDatabase (\ueMap -> Map.insert (ueIdRntiValueCR message)(addImsi' (ueIdentity message)oldCon)  ueMap) 
+      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (addImsi' (ueIdentity message)) (ueIdRntiValueCR message) ueMap)
       --putStrLn "End:Adding imsi to the state"
       map<- readTVarIO tempDatabase
+      print map --ok, bien modifie
+      database
+      where 
+        addImsi' imsi oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
+  c_rnti = c_rnti oldContent,
+  imsi = imsi,
+  Context.srbIdentity = Context.srbIdentity oldContent,
+  eNBUES1APid =eNBUES1APid oldContent ,
+  ratCapabilities =ratCapabilities oldContent,
+  Context.securityKey = Context.securityKey oldContent,
+  Context.epsBearerId = Context.epsBearerId oldContent }
+
+    fakeImsi behaviorContent (message,_,_)= do
+      putStrLn $ "faking imsi action to the state"++ show (ueIdRntiValueCR message)
+      --tempDatabase <- liftIO behaviorContent
+      --print (message)
+      --map1<- readTVarIO tempDatabase
+      --print map1 --ok, bien modifie
+      --let
+       --oldCon = Map.findWithDefault (defaultEmptyContext) (ueIdRntiValueCR message) map1
+      --print oldCon
+      --atomically $ modifyTVar tempDatabase (\ueMap -> Map.insert (ueIdRntiValueCR message)(addImsi' (ueIdentity message)oldCon)  ueMap) 
+      --atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (addImsi' (ueIdentity message)) (ueIdRntiValueCR message) ueMap)
+      --putStrLn "End:Adding imsi to the state"
+      --map<- readTVarIO tempDatabase
       --print map --ok, bien modifie
       database
+      --where 
+        --addImsi' imsi oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
+  --c_rnti = c_rnti oldContent,
+  --imsi = imsi,
+  --Context.srbIdentity = Context.srbIdentity oldContent,
+  --eNBUES1APid =eNBUES1APid oldContent ,
+  --ratCapabilities =ratCapabilities oldContent,
+  --Context.securityKey = Context.securityKey oldContent,
+  --Context.epsBearerId = Context.epsBearerId oldContent }
+
+    addImsi2 behaviorContent (message,_,_)= do
+      putStrLn $ "Adding imsi2 to the state"++ show (ueIdRntiValueCR message)
+      tempDatabase <- liftIO behaviorContent
+      print (message)
+      map1<- readTVarIO tempDatabase
+      print map1 --ok, bien modifie
+      let
+       oldCon = Map.findWithDefault (defaultEmptyContext) (ueIdRntiValueCR message) map1
+      --print oldCon
+      --atomically $ modifyTVar tempDatabase (\ueMap -> Map.insert (ueIdRntiValueCR message)(addImsi' (ueIdentity message)oldCon)  ueMap) 
+      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (addImsi' (ueIdentity message)) (ueIdRntiValueCR message) ueMap)
+      --putStrLn "End:Adding imsi to the state"
+      map<- readTVarIO tempDatabase
+      print map --ok, bien modifie
+      --database
       where 
         addImsi' imsi oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
   c_rnti = c_rnti oldContent,
@@ -570,7 +633,8 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
 
   --test du MME
   reactimate $ sendResponseMME  <$>eSendRepRrcCC
-  --reactimate $ apply (addImsi <$> bUeContext)  eMessageRrcCR
+  reactimate $ apply (addImsi2 <$> bUeContext)  eMessageRrcCR
+  reactimate $ apply (initUEContext <$> bUeContext)  eSendRepRAPreamble
   reactimate $ apply (addSrb <$> bUeContext)  eSendRepRRCConnectionRequest
   --reactimate $ apply (sendResponseEncrypted <$>bUeContext) eSendRepInitCSR
   reactimate $ sendResponseToUeIO <$> eSendRepInitCSR
