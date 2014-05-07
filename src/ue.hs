@@ -42,13 +42,25 @@ main =
     logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn logh) [1..2] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..45] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
+    endOfProgram
     hClose logh
     
     let diff = endTime `diffUTCTime` startTime
     printf "Time for the UEs procedures: %s\n"  (show diff)
+
+endOfProgram ::IO()
+endOfProgram =
+  bracket (connectedSocket "127.0.0.1" "43000")
+          close endOfProgram'
+  where
+    endOfProgram' :: Socket -> IO ()
+    endOfProgram' sock = do
+      --end message to the enodeB
+      _ <- send sock $ encode (EndOfProgram)
+      return ()
 
 powerOn :: Handle -> Int -> IO ()
 powerOn logh ueId =
@@ -73,7 +85,7 @@ powerOn logh ueId =
 
       --RRCConnectionSetup _ <- decode <$> recv sock 10240
       --_ <- send sock $ encode (RRCConnectionComplete True)
-      putStrLn "exit ue"
+      --putStrLn "exit ue"
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket

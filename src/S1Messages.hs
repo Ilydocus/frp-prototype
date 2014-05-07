@@ -26,7 +26,7 @@ data S1APMessage =
   | S1APInitialContextSetupResponse {eNB_UE_S1AP_Id :: !Int
                ,eRabId :: !String}--plus de mmeId car casse-pied
   | UplinkNASTransport {message :: !String}
-  | GetSocket --stupid message to get the socket  
+  | EndOfProgramMME   
   deriving (Eq, Generic, Show)
 
 instance Binary S1APMessage
@@ -51,7 +51,8 @@ instance Binary S1APMessage
                                      put b
                      UplinkNASTransport a -> do
                                      putWord8 3
-                                     put a                   
+                                     put a
+                     EndOfProgramMME -> putWord8 4
            
            get = do id<- getWord8
                     case id of
@@ -73,6 +74,7 @@ instance Binary S1APMessage
                       3 -> do
                         a<-get
                         return (UplinkNASTransport a)
+                      4 -> return (EndOfProgramMME)
                       
 
 --Enumerated Data Types
@@ -102,5 +104,6 @@ data S1MessageType =
   | InitContextReq
   | InitContextRes
   | UplinkTrans
+  | EndProg
     deriving (Eq, Show)
 

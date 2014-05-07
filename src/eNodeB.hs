@@ -86,6 +86,7 @@ eventLoop (messageUE, messageMME, messageDatabase) = loop
                --putStrLn "doing stuff"
              forkIO $ do
               forever $ do
+                --tant que pas last message?
             --putStrLn "Received something on the eNodeB"
                  messDec <- decode <$> recv ueSock 1024
          
@@ -165,7 +166,9 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     --utiliser le stepper juste pour le debut?
     --peut etre qu'un pure pourrait marcher aussi, a voir 
     eMessageRAPreambleDone = (((initUEContext database) <$> eSendRepRAPreamble))
-    bUeContext = stepper ( database) (eMessageRAPreambleDone ` union`  (addImsi database <$> eMessageRrcCR))
+    --bUeContext = stepper ( database) (eMessageRAPreambleDone ` union`  (addImsi database <$> eMessageRrcCR))
+    eAddImsi = (addImsi database <$> eMessageRrcCR)
+    bUeContext = pure database
 
     --current message
     --bCurrentRrcMessage :: Behavior t (RrcMessage,Socket,Socket)
@@ -254,7 +257,16 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     mmeISR:: (S1APMessage, Socket,Socket)-> Bool
     mmeISR x = case x of
       (S1APInitialContextSetupRequest a b c d, _,_)-> True
-      _ -> False  
+      _ -> False
+
+    --EndOfProgram message
+    eMessageEndOfProgram ::Event t (RrcMessage,Socket,Socket)
+    eMessageEndOfProgram = filterE endProg eMessageUE
+
+    endProg :: (RrcMessage, Socket,Socket)-> Bool
+    endProg x = case x of
+      (EndOfProgram, _,_)-> True
+      _ -> False
 
   --Stupid MME test
     {-eMMESocket ::Event t (S1APMessage,Socket)
@@ -311,12 +323,13 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     addSrb behaviorContent (RRCConnectionSetup _ key srb,_)= do
       tempDatabase <- liftIO behaviorContent
       map1<- readTVarIO tempDatabase
-      print map1 --ok, bien modifie
+      --print map1 --ok, bien modifie
       atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (addSrb' srb) key ueMap)
-      putStrLn "End:Adding srb to the state"
-      print srb
+      --putStrLn "End:Adding srb to the state"
+      --print srb
       map<- readTVarIO tempDatabase
-      print map --ok, bien modifie
+      return ()
+      --print map --ok, bien modifie
       where 
         addSrb' srb oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
   c_rnti = c_rnti oldContent,
@@ -331,16 +344,16 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     addImsi behaviorContent (message,_,_)= do
       putStrLn "Adding imsi to the state"
       tempDatabase <- liftIO behaviorContent
-      print (ueIdentity message)
+      print (message)
       map1<- readTVarIO tempDatabase
-      print map1 --ok, bien modifie
+      --print map1 --ok, bien modifie
       let
        oldCon = Map.findWithDefault (defaultEmptyContext) (ueIdRntiValueCR message) map1
-      print oldCon
+      --print oldCon
       atomically $ modifyTVar tempDatabase (\ueMap -> Map.insert (ueIdRntiValueCR message)(addImsi' (ueIdentity message)oldCon)  ueMap) 
-      putStrLn "End:Adding imsi to the state"
+      --putStrLn "End:Adding imsi to the state"
       map<- readTVarIO tempDatabase
-      print map --ok, bien modifie
+      --print map --ok, bien modifie
       database
       where 
         addImsi' imsi oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
@@ -389,7 +402,7 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (changeRrcState' enbUeId) (ueCRntiValue message) ueMap)
       
      map <- readTVarIO tempDatabase
-     print map 
+     --print map 
      return(S1APInitialUEMessage enbUeId EPSAttach (imsi (Map.findWithDefault defaultEmptyContext (ueCRntiValue message) ((map)))),mmeSocket)
      where --enbtruc changer le nom !xs
         changeRrcState' enbId oldContent =  UeContext_eNB {rrcState =RRC_Connected,
@@ -417,7 +430,7 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (changeSecurityKey' (S1Messages.securityKey message) (S1Messages.epsBearerId message)) ((eNB_UE_S1AP_Id message)`div`17) ueMap)
       
      map <- readTVarIO tempDatabase
-     print map 
+     --print map 
      --let crnti = (eNB_UE_S1AP_Id message)`div`17
      return(SecurityModeCommand ((eNB_UE_S1AP_Id message)`div`17) (encryptString (S1Messages.securityKey message) "ciphered") ,ueSocket)
      where --add eps in the name
@@ -484,7 +497,8 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust changeStateToIdle' key ueMap)
      --Just to check
      map <- readTVarIO tempDatabase
-     print map
+     return ()
+     --print map
      where 
         changeStateToIdle' oldContent =  UeContext_eNB {
   rrcState =RRC_Idle,
@@ -505,7 +519,7 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (storeRATCapabilities' (ueCapabilityRatList message)) (ueCRntiValue message) ueMap)
      map <- readTVarIO tempDatabase
 --just to check
-     print map 
+     --print map 
 
      return (RRCConnectionReconfiguration (ueCRntiValue message) (Context.epsBearerId (Map.findWithDefault defaultEmptyContext (ueCRntiValue message) (map))) ,ueSocket)
      where
@@ -573,6 +587,7 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
   reactimate $ writeToLog logh . showMessageNumber <$> eMessageUE
   --reactimate $ hClose logh <$  eSendRepReconfComplete
   reactimate $ (finalLog logh <$> bUeContext)  <@> eMessageReconfComplete --applyibfix
+  reactimate $ closeLog logh <$> eMessageEndOfProgram
 
     
 showNbMessages nbMessages = "Nb of messages received: " ++ show nbMessages
@@ -725,3 +740,11 @@ finalLog handle behaviorContent (message, _, _) = do
     lastContext = Map.findWithDefault defaultEmptyContext key map
   writeToLog handle ("Context at the end : "++ show lastContext)
   --hClose handle
+
+closeLog :: Handle -> (RrcMessage, Socket, Socket) ->IO()
+closeLog handle (_,ueSocket,mmeSocket) = do
+   _ <- send mmeSocket $ encode (EndOfProgramMME)
+   liftIO $ close ueSocket
+   hClose handle
+  
+  

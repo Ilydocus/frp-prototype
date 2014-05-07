@@ -47,7 +47,8 @@ data RrcMessage =
   | RRCConnectionReconfigurationComplete {ueCRntiValue :: !Int
                                           ,epsRadioBearerActivated :: !Bool}
   | UplinkInformationTransfer {dedicatedInfoType :: DedicatedInfoType
-                              ,message :: !String }  
+                              ,message :: !String }
+  |EndOfProgram
   deriving (Eq, Generic, Show)--derived show
 
 instance Binary RrcMessage
@@ -113,6 +114,7 @@ instance Binary RrcMessage
                      RRCConnectionAccept a -> do
                                      putWord8 15
                                      put a
+                     EndOfProgram -> putWord8 17
                      
 
                     
@@ -191,6 +193,7 @@ instance Binary RrcMessage
                       15 -> do
                         a<-get
                         return (RRCConnectionAccept a)
+                      17 -> return (EndOfProgram)
                  
                          {-get::(RAResponse i) = do i<- get
                                   return (RAResponse i)-}

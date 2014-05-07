@@ -105,6 +105,7 @@ setupNetwork message database logh = do
       (S1APInitialContextSetupRequest a b c d,_)-> InitContextReq
       (S1APInitialContextSetupResponse a b,_)-> InitContextRes
       (UplinkNASTransport a, _)-> UplinkTrans
+      (EndOfProgramMME,_)-> EndProg
 
     --Fire specific intern event for each message  
     eInitialUEMessage ::Event t (S1APMessage,Socket)
@@ -112,6 +113,9 @@ setupNetwork message database logh = do
 
     eUplinkNASTransport ::Event t (S1APMessage,Socket)
     eUplinkNASTransport = filterE (\t -> (incomingMessageType t) ==UplinkTrans) eMessage
+
+    eEndOfProgram ::Event t (S1APMessage,Socket)
+    eEndOfProgram = filterE (\t -> (incomingMessageType t) == EndProg) eMessage
 
     eInitialContextSetupResponse ::Event t (S1APMessage,Socket)
     eInitialContextSetupResponse = filterE (\t -> (incomingMessageType t) ==InitContextRes) eMessage
@@ -157,6 +161,8 @@ setupNetwork message database logh = do
   reactimate $ writeToLog logh . showMessageNumber <$> eMessage
   --reactimate $ hClose logh <$  eSendRepReconfComplete
   reactimate $ (finalLog logh <$> bUeContexts)  <@> eInitialContextSetupResponse
+  reactimate $ closeLog logh <$ eEndOfProgram
+  
     
 showNbMessages nbMessages = "Nb of messages received: " ++ show nbMessages
 showMessageNumber (number, socket) = "MME: Message from UE " ++ show number ++ " has arrived"
@@ -184,3 +190,7 @@ finalLog handle behaviorContent (message, _) = do
     lastContext = Map.findWithDefault defaultEmptyContext key map
   writeToLog handle ("Context at the end : "++ show lastContext)
   --hClose handle
+
+closeLog :: Handle -> IO()
+closeLog handle =
+  hClose handle
