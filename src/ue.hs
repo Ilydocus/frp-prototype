@@ -13,7 +13,6 @@ import UeContextStates
 import Control.Concurrent.Async
 
 import Data.Time
-import Text.Printf
 
 import Reactive.Banana as R
 import Reactive.Banana.Frameworks as R
@@ -22,7 +21,6 @@ import EventSources
 import System.IO
 
 import Control.Monad
---import Control.Monad.Trans.Loop
 
 import System.Random
 
@@ -45,22 +43,12 @@ main =
     ues <- mapM (async . powerOn logh) [1..100] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
+
     endOfProgram
     hClose logh
     
     let diff = endTime `diffUTCTime` startTime
-    printf "Time for the UEs procedures: %s\n"  (show diff)
-
-endOfProgram ::IO()
-endOfProgram =
-  bracket (connectedSocket "127.0.0.1" "43000")
-          close endOfProgram'
-  where
-    endOfProgram' :: Socket -> IO ()
-    endOfProgram' sock = do
-      --end message to the enodeB
-      _ <- send sock $ encode (EndOfProgram)
-      return ()
+    writeToLog logh $ "Time for the UEs procedures: " ++ (show diff)
 
 powerOn :: Handle -> Int -> IO ()
 powerOn logh ueId =
@@ -69,23 +57,11 @@ powerOn logh ueId =
   where
     powerOn' :: Handle -> Socket -> IO ()
     powerOn' logh sock = do
-      --create sources
       sources <- newAddHandler
-      --compile and start network
       network <- compile $ setupNetwork sources ueId logh
       actuate network
-      -- specific event loop
       eventLoop sources sock ueId
-      --_ <- send sock $ encode (RAPreamble ueId)
-      
-      --randomId <- randomRIO (1, 320 :: Int)
-      -- _ <- send sock $ encode (RAPreamble randomId)
-      -- RAResponse _ <- decode <$> recv sock 10240
-      --_ <- send sock $ encode (RRCConnectionRequest (RRCConnectionRequestIEs (STMSI ueId) Emergency 2))
-
-      --RRCConnectionSetup _ <- decode <$> recv sock 10240
-      --_ <- send sock $ encode (RRCConnectionComplete True)
-      putStrLn $ "exit ue" ++ (show ueId)
+      writeToLog logh $  "Terminated  ue " ++ (show ueId)
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket
@@ -96,42 +72,29 @@ connectedSocket host port = do
   connect sock $ addrAddress primary
   return sock
 
---Read commands and fire corresponding events (Approximation nb1)
+endOfProgram :: IO()
+endOfProgram =
+  bracket (connectedSocket "127.0.0.1" "43000")
+          close endOfProgram'
+  where
+    endOfProgram' :: Socket -> IO ()
+    endOfProgram' sock = do
+      _ <- send sock $ encode (EndOfProgram)
+      return ()
+
 eventLoop :: EventSource (RrcMessage,Socket)-> Socket-> Int -> IO ()
-eventLoop message  sock ueId = withSocketsDo $ do
-       --Send first message
-       --fire message (RAPreamble 47,sock) --forkIO
+eventLoop message sock ueId = withSocketsDo $ do
        _ <- send sock $ encode (RAPreamble RA_RNTI ueId)
-       --Wait for response
        loop
        where loop = do
-               
-       --forever $ do
-         --let messDecrypt = liftIO $ (crypt CTR (B.concat (BL.toChunks(encode (ueId*18)))) (B.concat (BL.toChunks(encode (0::Int)))) Decrypt  <$> recv sock 1024)
-         --messDec <- decode (crypt CTR (B.concat (BL.toChunks(encode (ueId*18)))) (B.concat (BL.toChunks(encode (0::Int)))) Decrypt  <$> recv sock 1024) --messDecrypt --(decryptResponse (ueId*18) <$> recv sock 1024)
-                messDec <- decode <$> recv sock 1024
-                fire message (messDec,sock) --forkIO?
-                --exit the loop
-                when (notlastMessage messDec) loop
-                where notlastMessage mess = case mess of
-                        (RRCConnectionAccept _ ) -> False
-                        (RRCConnectionReject _ _) -> False
-                        _ -> True
+               messDec <- decode <$> recv sock 1024
+               fire message (messDec,sock)
+               when (notlastMessage messDec) loop
+               where notlastMessage mess = case mess of
+                       (RRCConnectionAccept _ ) -> False
+                       (RRCConnectionReject _ _) -> False
+                       _ -> True
          
-         --send sock $ encode (RAPreamble 45)--non execute
-         
-      {- putStr "> "
-       hFlush stdout
-       s <- getLine
-       case s of
-         "message1" -> fire message 1 --fire corresponding events
-         "message2" -> fire message 2
-         "messageI" -> fire messageI ()
-         "quit" -> return ()
-         _ -> putStrLn "Unknown command"
-       when (s /= "quit") loop -}
-
-
 {-----------------------------------------------------
      Program Logic
 ------------------------------------------------------}
