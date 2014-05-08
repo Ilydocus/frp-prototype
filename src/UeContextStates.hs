@@ -4,10 +4,15 @@ module UeContextStates
        , UeContext_mme (..)
        , UeContext_ue (..)
        , RRCState (..)
+       , defaultUeState  
        ) where
 
 import RrcMessages
 import Identifiers
+
+{-----------------------------------------------------
+     Context Definitions
+------------------------------------------------------}
 
 data UeContext_eNB = UeContext_eNB{
   rrcState :: RRCState,
@@ -48,4 +53,16 @@ instance Show UeContext_ue
   where
     show m = "UeContext_ue {IMSI: "++ show (imsi_ue m) ++ " Security Key: " ++ show (securityKey_ue m) ++ " SRB ID: " ++ show (srbId m)++ "}"
 
-                     
+{-----------------------------------------------------
+     Default Contents
+------------------------------------------------------}
+defaultUeState :: Int -> UeContext_ue
+defaultUeState seed = UeContext_ue{
+  imsi_ue = genIMSI seed  (seed+2),
+  securityKey_ue = seed*18,
+  srbId = "0"
+  }
+
+{-----------------------------------------------------
+     Modifiers
+------------------------------------------------------}

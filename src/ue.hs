@@ -99,45 +99,12 @@ eventLoop message sock ueId = withSocketsDo $ do
      Program Logic
 ------------------------------------------------------}
 
--- Set up the event network
 setupNetwork :: forall t. Frameworks t =>
    EventSource (RrcMessage,Socket) -> Int -> Handle -> Moment t ()
 setupNetwork message ueId logh = do
-
-  --Obtain events corresponding to the eNodeB
-  eMessage{-:: Event t (RrcMessage,Socket) -}<- fromAddHandler (addHandler message)
-  
-    
-
-  
-  
+  eMessage<- fromAddHandler (addHandler message)
   let
-    --How to capture the state? Compare to the slot machine
-    --For now, number of messages received is the state
-    -- both the eMessage 1 and the emessage2 events add one to the state
-    bNbMessages :: Behavior t Int
-    eNbMessages :: Event t Int
-    (eNbMessages, bNbMessages) = mapAccum 0 . fmap (\f x -> (f x, f x)) $
-                     (addMessage <$ eMessage)
-                        
-    --Functions to change the state
-    addMessage = (+ 1)
-    {-eCreateState :: Behavior t (IMSI,Int)
-    eCreateState = apply createUeState eMessageRAResponse-}
-    
-    --State of the UE
-    --bUeState :: Behavior t (IMSI,Int)
     bUeState :: Behavior t UeContext_ue
-    --bUeState = R.pure <$>  (createUeState <$> bNbMessages)
-    --bUeState = stepper defaultUeState (createUeState <$> eMessageRAResponse) --utiliser pure?
-
-    {-createUeState :: (RrcMessage, Socket)-> (IMSI,Int)
-    createUeState (message, _)= (genIMSI (ueRaRntiValue message)  ((ueRaRntiValue message)+2),(ueRaRntiValue message)*18)-}
-
-    --createUeState :: Int -> (IMSI,Int)
-    --createUeState seed= (genIMSI seed  (seed+2),seed*18)
-    --state = (createUeState  ueId)
-    --bUeState =pure state
     bUeState = stepper (defaultUeState ueId) (apply (addSrb <$> bUeState) eMessageRrcCS)
 
     addSrb :: UeContext_ue -> (RrcMessage,Socket) -> UeContext_ue
@@ -146,25 +113,7 @@ setupNetwork message ueId logh = do
   securityKey_ue = securityKey_ue oldState,
   srbId = RrcMessages.srbIdentity message
   }
-    
-  --Fire a specific event depending on the type of message
-  --let eMessageRAResponse ::Event t (RrcMessage,Socket)
-  {-case fst eMessage of
-    (RAResponse a b c, _) -> do
-      let
-        --eMessageRAResponse ::Event t (RrcMessage,Socket)
-        eMessageRAResponse = filterE raResponse eMessage
-        raResponse:: (RrcMessage, Socket)-> Bool
-        raResponse x = case x of
-          (RAResponse a b c, _)-> True
-          _ -> False
-      reactimate $ sendResponse  <$> eMessageRAResponse
-      --return ()
-    (RRCConnectionSetup a b c, _) -> do
-      eMessageRrcCS <- filterE (\t ->True) eMessage
-      reactimate $ sendResponse2  <$> eMessageRrcCS
-    -}
-    
+       
     --Inner functions depending on the incoming event
     eMessageRAResponse ::Event t (RrcMessage,Socket)
     eMessageRAResponse = filterE raResponse eMessage
@@ -285,33 +234,25 @@ setupNetwork message ueId logh = do
 
     
 
-    --Output: Is printed in the order of definition?
-  --reactimate $ putStrLn . showNbMessages <$> eNbMessages
+  --Output
   reactimate $ putStrLn . showMessageNumber <$> eMessage
-  --reactimate $ putStrLn . show <$> eMessage
-    --add an output event?
   reactimate $ putStrLn . rejectMessage <$> eMessageRrcReject
-  reactimate $ sendResponse  <$> eSendMessRrcCR --eMessageRAResponse
-  --reactimate $ sendResponse2  <$> eMessageRAP
-  --reactimate $ putStrLn "RAResponse has been identified"<$ eMessageRAResponse
+  reactimate $ sendResponse  <$> eSendMessRrcCR 
   reactimate $ sendResponse  <$> eSendMessRrcCSC
   reactimate $ sendResponse <$> eSendMessSecComplete
   reactimate $ sendResponse <$> eSendMessUeCapInf
   reactimate $ sendResponse <$> eSendMessReconfComplete
-  --Log
   reactimate $ writeToLog logh . showMessageNumber <$> eMessage
-  reactimate $ (finalLog logh <$> bUeState)  <@> eSendMessReconfComplete 
+  reactimate $ (finalLog_ue logh <$> bUeState)  <@> eSendMessReconfComplete 
 
     
 showNbMessages nbMessages = "Nb of messages received in this UE: " ++ show nbMessages
 showMessageNumber (number,sock) = "Message " ++ show number ++ " from eNodeB has arrived"
 rejectMessage (message, _) = "RRC Connection rejected (UE C-RNTI ="++ show (ueCrnti message)++")"
---add something to really terminate the connection(kill network?)
 sendResponse (message,sock) = do
                              _ <- send sock $ encode message
                              return ()
 
---decryptResponse :: Int ->IO(RrcMessage,Socket)-> IO ()
 decryptResponse key message = 
   crypt CTR (B.concat (BL.toChunks(( BL.concat[(encode key), (encode key)]
 
@@ -320,21 +261,4 @@ decryptResponse key message =
                                                                                                              putWord64be 0
                                                                                                           )))) Decrypt message                  
 
-
-{-sendResponse2  (number,sock) = do
-                             _ <- send sock $ encode (RRCConnectionSetupComplete 4)
-                             putStrLn "Sends something CS Complete"
-                             return ()-}
-
-
-defaultUeState :: Int -> UeContext_ue
-defaultUeState seed = UeContext_ue{
-  imsi_ue = genIMSI seed  (seed+2),
-  securityKey_ue = seed*18,
-  srbId = "0"
-  }
-
-finalLog :: Handle -> UeContext_ue -> (RrcMessage, Socket) -> IO()
-finalLog handle state (message, _) = do
-  writeToLog handle ("Context at the end : "++ show state)
 
