@@ -353,7 +353,7 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
   Context.securityKey = Context.securityKey oldContent,
   Context.epsBearerId = Context.epsBearerId oldContent }
 
-    addSrb behaviorContent (RRCConnectionReject _ _,_)= return ()--do nothing since rejected
+    --addSrb behaviorContent (RRCConnectionReject _ _,_)= return ()--do nothing since rejected
 
     --addImsi :: IO(TVar ENBMap) ->(RrcMessage, Socket,Socket)->IO ()
     addImsi behaviorContent (message,_,_)= do
@@ -676,6 +676,7 @@ sendResponseToUe handle behaviorContent (message, ueSocket) =
                                  map <- readTVarIO tempDatabase
                                  let lastContext =  Map.findWithDefault defaultEmptyContext key map
                                  writeToLog handle ("Context at the end : "++ (show lastContext))
+                                 putStrLn "Is going to send the reject message to the UE"
                                  _ <- send ueSocket $ encode message --(createMessage message <$> bUeContext)--messageNew
                                  return ()
                                  --where

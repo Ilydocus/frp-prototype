@@ -42,7 +42,7 @@ main =
     logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn logh) [1..24] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..100] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
     endOfProgram

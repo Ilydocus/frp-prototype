@@ -196,5 +196,5 @@ finalLog handle behaviorContent (message, mmeSocket) = do
 
 closeLog :: Handle ->(S1APMessage, Socket)-> IO()
 closeLog handle (_,mmeSocket)= do
-  --liftIO $ close mmeSocket
+  liftIO $ close mmeSocket
   hClose handle
