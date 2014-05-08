@@ -5,7 +5,6 @@ import Control.Exception
 import Control.Applicative
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString.Lazy
---import System.Random
 
 import RrcMessages
 import Identifiers
@@ -18,6 +17,7 @@ import Text.Printf
 
 import Reactive.Banana as R
 import Reactive.Banana.Frameworks as R
+import EventSources
 
 import System.IO
 
@@ -130,16 +130,7 @@ eventLoop message  sock ueId = withSocketsDo $ do
          "quit" -> return ()
          _ -> putStrLn "Unknown command"
        when (s /= "quit") loop -}
-{-----------------------------------------------------
-     Event Sources
-------------------------------------------------------}
-type EventSource a = (AddHandler a, a -> IO())
 
-addHandler :: EventSource a -> AddHandler a
-addHandler = fst
-
-fire :: EventSource a -> a -> IO()
-fire = snd
 
 {-----------------------------------------------------
      Program Logic

@@ -6,6 +6,7 @@ import System.IO
 
 import Reactive.Banana as R
 import Reactive.Banana.Frameworks as R
+import EventSources
 
 --Socket related
 import Network hiding (accept)
@@ -50,17 +51,6 @@ eventLoop message = loop
            messDec <- decode <$> recv connectionSocket 1024
            (fire message (messDec,connectionSocket))
      
-{-----------------------------------------------------
-     Event Sources
-------------------------------------------------------}
-type EventSource a = (AddHandler a, a -> IO())
-
-addHandler :: EventSource a -> AddHandler a
-addHandler = fst
-
-fire :: EventSource a -> a -> IO()
-fire = snd
-
 {-----------------------------------------------------
      Program Logic
 ------------------------------------------------------}
