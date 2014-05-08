@@ -4,9 +4,11 @@ module UeContextStates
        , UeContext_mme (..)
        , UeContext_ue (..)
        , RRCState (..)
-       , defaultUeState  
+       , defaultUeState
+       , addSrb_ue 
        ) where
 
+import Network.Socket
 import RrcMessages
 import Identifiers
 
@@ -66,3 +68,9 @@ defaultUeState seed = UeContext_ue{
 {-----------------------------------------------------
      Modifiers
 ------------------------------------------------------}
+addSrb_ue :: UeContext_ue -> (RrcMessage,Socket) -> UeContext_ue
+addSrb_ue oldState (message, _)= UeContext_ue{
+  imsi_ue = imsi_ue oldState,
+  securityKey_ue = securityKey_ue oldState,
+  srbId = RrcMessages.srbIdentity message
+  }

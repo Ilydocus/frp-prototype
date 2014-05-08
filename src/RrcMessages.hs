@@ -5,7 +5,8 @@ module RrcMessages
        , decode
        , UeIdRntiType (..)
        , RAT (..)
-       , DedicatedInfoType (..)  
+       , DedicatedInfoType (..)
+       , RrcMessageType (..)  
        ) where
 
 import Data.Binary
@@ -313,3 +314,21 @@ instance Binary DedicatedInfoType
                         return DedicatedInfoNAS
                       1 -> do
                         return Other
+
+data RrcMessageType =
+    RaP
+  | RaR
+  | RrcCRequest
+  | RrcCS
+  | RrcCSC
+  | SecurityMCommand
+  | SecurityMComplete
+  | UeCE
+  | UeCI
+  | RrcCReconfiguration
+  | RrcCRC
+  | RrcCReject
+  | RrcCA  
+  | EndProgEnb  
+    deriving (Eq,Show)
+    
