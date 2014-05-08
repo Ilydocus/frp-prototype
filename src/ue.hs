@@ -5,32 +5,24 @@ import Control.Exception
 import Control.Applicative
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString.Lazy
-
-import RrcMessages
-import Identifiers
-import UeContextStates
-
 import Control.Concurrent.Async
-
 import Data.Time
-
-import Reactive.Banana as R
-import Reactive.Banana.Frameworks as R
-import EventSources
-
 import System.IO
-
 import Control.Monad
-
 import System.Random
-
---Decryption
 import Codec.Crypto.AES
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
 import Data.Word
 import Data.Binary.Put
 
+import Reactive.Banana as R
+import Reactive.Banana.Frameworks as R
+import EventSources
+
+import RrcMessages
+import Identifiers
+import UeContextStates
 import LogTools
 
 main :: IO ()
@@ -60,7 +52,7 @@ powerOn logh ueId =
       network <- compile $ setupNetwork sources ueId logh
       actuate network
       eventLoop sources sock ueId
-      writeToLog logh $  "Terminated  ue " ++ (show ueId)
+      writeToLog logh $  "Terminated  UE " ++ (show ueId)
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket
@@ -232,22 +224,25 @@ setupNetwork message ueId logh = do
          
   --Output
   reactimate $ sendResponse  <$> eResponseMessage
-  reactimate $ writeToLog logh . showMessageNumber <$> eMessage
+  reactimate $ writeToLog logh . showMessage <$> eMessage
   reactimate $ (finalLog_ue logh <$> bUeState)  <@> eSendMessReconfComplete 
 
-    
-showMessageNumber (number,sock) = "Message " ++ show number ++ " from eNodeB has arrived"
-rejectMessage (message, _) = "RRC Connection rejected (UE C-RNTI ="++ show (ueCrnti message)++")"
+showMessage :: (RrcMessage,Socket) -> String   
+showMessage (message,_) = "Message received: " ++ show message 
+
+sendResponse :: (RrcMessage,Socket) -> IO ()
 sendResponse (message,sock) = do
                              _ <- send sock $ encode message
                              return ()
-
+                             
+decryptResponse :: Int -> BL.ByteString -> BL.ByteString 
 decryptResponse key message = 
-  crypt CTR (B.concat (BL.toChunks(( BL.concat[(encode key), (encode key)]
-
-                                                         )))) (B.concat (BL.toChunks(runPut (do
-                                                                                                             putWord64be 0
-                                                                                                             putWord64be 0
-                                                                                                          )))) Decrypt message                  
+  crypt CTR key' iv Decrypt message
+  where
+    key' = B.concat(BL.toChunks(BL.concat[(encode key),(encode key)]))
+    iv = B.concat(BL.toChunks(runPut(do
+                                        putWord64be 0
+                                        putWord64be 0
+                                        )))
 
 
