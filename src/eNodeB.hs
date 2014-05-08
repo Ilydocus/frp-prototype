@@ -311,7 +311,8 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     handleConnectionRequest :: (RrcMessage,Socket,Socket) -> (RrcMessage,Socket) 
     handleConnectionRequest (message, ueSocket, _) = --do
       --_<-addImsiAndSrb (ueIdentity message) srbId crnti behaviorContent
-      if reject then
+      if reject then 
+        
         (RRCConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket)
         else --do
         --_<-addImsiAndSrb (ueIdentity message) srbId crnti behaviorContent
@@ -351,6 +352,8 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
   ratCapabilities =ratCapabilities oldContent,
   Context.securityKey = Context.securityKey oldContent,
   Context.epsBearerId = Context.epsBearerId oldContent }
+
+    addSrb behaviorContent (RRCConnectionReject _ _,_)= return ()--do nothing since rejected
 
     --addImsi :: IO(TVar ENBMap) ->(RrcMessage, Socket,Socket)->IO ()
     addImsi behaviorContent (message,_,_)= do
@@ -406,9 +409,9 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
     addImsi2 behaviorContent (message,_,_)= do
       putStrLn $ "Adding imsi2 to the state"++ show (ueIdRntiValueCR message)
       tempDatabase <- liftIO behaviorContent
-      print (message)
+      --print (message)
       map1<- readTVarIO tempDatabase
-      print map1 --ok, bien modifie
+      --print map1 --ok, bien modifie
       let
        oldCon = Map.findWithDefault (defaultEmptyContext) (ueIdRntiValueCR message) map1
       --print oldCon
@@ -416,7 +419,8 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
       atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust (addImsi' (ueIdentity message)) (ueIdRntiValueCR message) ueMap)
       --putStrLn "End:Adding imsi to the state"
       map<- readTVarIO tempDatabase
-      print map --ok, bien modifie
+      return ()
+      --print map --ok, bien modifie
       --database
       where 
         addImsi' imsi oldContent =  UeContext_eNB {rrcState =rrcState oldContent,
@@ -560,6 +564,9 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
      atomically $ modifyTVar tempDatabase (\ueMap -> Map.adjust changeStateToIdle' key ueMap)
      --Just to check
      map <- readTVarIO tempDatabase
+     --let
+      --lastContext = Map.findWithDefault defaultEmptyContext key map
+     --writeToLog logh ("Context at the end : "++ show lastContext)
      return ()
      --print map
      where 
@@ -623,10 +630,10 @@ setupNetwork (messageUE, messageMME, messageDatabase) database logh= do
   reactimate $ putStrLn . showMessageNumber <$> eMessageUE
   reactimate $ putStrLn . showMessageNumberMME <$> eMessageMME
   --reactimate $ sendResponse (RAResponse RA_RNTI 12 21) <$> eMessageRAPreamble
-  reactimate $ sendResponseToUe <$> eSendRepRAPreamble -- <$> eMessageRAPreamble
+  reactimate $ apply (sendResponseToUe logh <$> bUeContext) eSendRepRAPreamble -- <$> eMessageRAPreamble
   --reactimate $ sendResponseMME (S1APInitialUEMessage 13 EPSAttach "16") <$> eMessageRAPreamble
   --reactimate $ sendResponse (RRCConnectionSetup C_RNTI 45 54) <$> eMessageRrcCR
-  reactimate $ sendResponseToUe <$> eSendRepRRCConnectionRequest
+  reactimate $ apply (sendResponseToUe logh <$> bUeContext) eSendRepRRCConnectionRequest
   reactimate $ putStrLn "CR received " <$ eMessageRrcCR
   --reactimate $ sendResponse (RRCConnectii True) <$> eMessageRrcCC
   reactimate $ putStrLn  "ConnectionSetup is complete " <$ eMessageRrcCC
@@ -660,14 +667,29 @@ sendResponse message (number,sock,mmeSocket) = do
                              _ <- send sock $ encode message
                              return ()
 --sendResponseToRAPreamble :: IO (RrcMessage,Socket)-> IO ()
-sendResponseToUe ::  (RrcMessage,Socket)-> IO ()
-sendResponseToUe (message, ueSocket) = do
+sendResponseToUe ::  Handle ->IO(TVar ENBMap)-> (RrcMessage,Socket)-> IO ()
+sendResponseToUe handle behaviorContent (message, ueSocket) = 
+                             case message of
+                               (RRCConnectionReject key _) -> do
+                                 putStrLn "Trying to write last context of a reject at the beginning"
+                                 tempDatabase <- liftIO behaviorContent
+                                 map <- readTVarIO tempDatabase
+                                 let lastContext =  Map.findWithDefault defaultEmptyContext key map
+                                 writeToLog handle ("Context at the end : "++ (show lastContext))
+                                 _ <- send ueSocket $ encode message --(createMessage message <$> bUeContext)--messageNew
+                                 return ()
+                                 --where
+                                    --lastContext = Map.findWithDefault defaultEmptyContext key map
+                                    
+                               _ -> do
+                                 _ <- send ueSocket $ encode message --(createMessage message <$> bUeContext)--messageNew
+                                 return ()
                              --(message, ueSocket)<- x
                               
                              --let message= (RAResponse RA_RNTI (ueIdRntiValue message) (c_rnti (Map.findWithDefault 0 (ueIdRntiValue message)    <$> ( bUeContext))) )
                              
-                             _ <- send ueSocket $ encode message --(createMessage message <$> bUeContext)--messageNew
-                             return ()
+                             --_ <- send ueSocket $ encode message --(createMessage message <$> bUeContext)--messageNew
+                             --return ()
 
 sendResponseToReconf ::  IO Message-> IO ()
 sendResponseToReconf x = do

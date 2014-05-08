@@ -42,7 +42,7 @@ main =
     logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn logh) [1..2] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..24] --nb of UEs
     mapM_ wait ues
     endTime <- getCurrentTime
     endOfProgram
@@ -85,7 +85,7 @@ powerOn logh ueId =
 
       --RRCConnectionSetup _ <- decode <$> recv sock 10240
       --_ <- send sock $ encode (RRCConnectionComplete True)
-      --putStrLn "exit ue"
+      putStrLn $ "exit ue" ++ (show ueId)
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket

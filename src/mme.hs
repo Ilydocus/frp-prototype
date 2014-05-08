@@ -86,14 +86,15 @@ setupNetwork message database logh = do
     addMessage = (+ 1)
 
     bUeContexts :: Behavior t (IO (TVar MMEMap))
-    bUeContexts = stepper database (initUeContexts database <$> eSendRepInitialMessage)
+    --bUeContexts = stepper database (initUeContexts database <$> eSendRepInitialMessage)
+    bUeContexts = pure database
 
-    initUeContexts :: IO(TVar MMEMap) -> (S1APMessage, Socket) -> IO (TVar MMEMap)
+    initUeContexts :: IO(TVar MMEMap) -> (S1APMessage, Socket) -> IO ()
     initUeContexts database (message, socket) = do
       tempDatabase <- liftIO $ database
       atomically $ modifyTVar tempDatabase (\mmeMap -> Map.insert (eNB_UE_S1AP_Id message) (defaultUeContext (mme_UE_S1AP_Id message)(S1Messages.securityKey message)) mmeMap )
       --return the entry that was created ?
-      database
+      --database
 
     --Inner functions to fire a specific event depending on the one that was received
     --one needeed per incoming message
@@ -155,13 +156,14 @@ setupNetwork message database logh = do
   --reactimate $ sendResponse (RRCConnectionSetup C_RNTI 45 54) <$> eMessageRrcCR
   reactimate $ putStrLn "InitialUEMessage received " <$ eInitialUEMessage
   reactimate $ sendResponse <$> eSendRepInitialMessage
+  reactimate $ initUeContexts database <$> eSendRepInitialMessage
   --reactimate $ sendResponse (RRCConnectii True) <$> eMessageRrcCC
   --reactimate $ putStrLn  "ConnectionSetup is complete " <$ eMessageRrcCC
     --add an output event?
   reactimate $ writeToLog logh . showMessageNumber <$> eMessage
   --reactimate $ hClose logh <$  eSendRepReconfComplete
   reactimate $ (finalLog logh <$> bUeContexts)  <@> eInitialContextSetupResponse
-  reactimate $ closeLog logh <$ eEndOfProgram
+  reactimate $ closeLog logh <$> eEndOfProgram
   
     
 showNbMessages nbMessages = "Nb of messages received: " ++ show nbMessages
@@ -179,9 +181,10 @@ defaultEmptyContext = UeContext_mme{
   mmeUES1APid = -1,
   securityKey_mme = -1
   }
-
+--change the name maybe to finalMessageAction
 finalLog :: Handle -> IO(TVar MMEMap) -> (S1APMessage, Socket) -> IO()
-finalLog handle behaviorContent (message, _) = do
+finalLog handle behaviorContent (message, mmeSocket) = do
+  --liftIO $ close mmeSocket
   tempDatabase <- liftIO behaviorContent
   map <- readTVarIO tempDatabase
   let
@@ -191,6 +194,7 @@ finalLog handle behaviorContent (message, _) = do
   writeToLog handle ("Context at the end : "++ show lastContext)
   --hClose handle
 
-closeLog :: Handle -> IO()
-closeLog handle =
+closeLog :: Handle ->(S1APMessage, Socket)-> IO()
+closeLog handle (_,mmeSocket)= do
+  --liftIO $ close mmeSocket
   hClose handle
