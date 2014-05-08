@@ -41,6 +41,7 @@ executable frp-prototype-ue
   default-language:    Haskell2010    
   build-depends:       base >=4.6 && <4.7,
                        reactive-banana >= 0.8,
+                       stm > 2.4,
                        time >= 1.4,
                        async >= 2.0,
                        network >= 2.4,
@@ -48,6 +49,7 @@ executable frp-prototype-ue
                        binary >= 0.5,
                        transformers >= 0.3,
                        random >= 1.0,
+                       containers >= 0.5,
                        AES >= 0.2.8
 
 executable frp-prototype-mme

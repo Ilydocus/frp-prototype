@@ -100,10 +100,9 @@ instance Binary EPSAttach
                         
 --Type for filtering the events in the mme
 data S1MessageType =
-    InitUEMess
-  | InitContextReq
-  | InitContextRes
-  | UplinkTrans
-  | EndProg
+    S1ApIUeM
+  | S1ApICSRequest
+  | S1ApICSResponse
+  | EndProgMme
     deriving (Eq, Show)
 

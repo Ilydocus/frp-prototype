@@ -96,7 +96,7 @@ setupNetwork message ueId logh = do
   eMessage<- fromAddHandler (addHandler message)
   let
     bUeState :: Behavior t UeContext_ue
-    bUeState = stepper (defaultUeState ueId) (apply (addSrb_ue <$> bUeState) eRrcConnectionSetup)
+    bUeState = stepper (initialUeState ueId) (apply (addSrb_ue <$> bUeState) eRrcConnectionSetup)
 
     incomingMessageType :: (RrcMessage, Socket) -> RrcMessageType
     incomingMessageType event = case event of

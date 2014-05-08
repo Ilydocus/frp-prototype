@@ -4,7 +4,9 @@ module UeContextStates
        , UeContext_mme (..)
        , UeContext_ue (..)
        , RRCState (..)
-       , defaultUeState
+       , initialUeState
+       , initialUeContext_mme  
+       , defaultUeContext_mme  
        , addSrb_ue 
        ) where
 
@@ -58,11 +60,23 @@ instance Show UeContext_ue
 {-----------------------------------------------------
      Default Contents
 ------------------------------------------------------}
-defaultUeState :: Int -> UeContext_ue
-defaultUeState seed = UeContext_ue{
+initialUeState :: Int -> UeContext_ue
+initialUeState seed = UeContext_ue{
   imsi_ue = genIMSI seed  (seed+2),
   securityKey_ue = seed*18,
   srbId = "0"
+  }
+
+initialUeContext_mme :: Int -> Int -> UeContext_mme
+initialUeContext_mme mmeId securityKey= UeContext_mme{
+  mmeUES1APid = mmeId,
+  securityKey_mme = securityKey
+  }
+
+defaultUeContext_mme :: UeContext_mme
+defaultUeContext_mme = UeContext_mme{
+  mmeUES1APid = -1,
+  securityKey_mme = -1
   }
 
 {-----------------------------------------------------
