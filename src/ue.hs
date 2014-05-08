@@ -44,11 +44,10 @@ main =
     mapM_ wait ues
     endTime <- getCurrentTime
 
-    endOfProgram
-    hClose logh
-    
+    endOfProgram   
     let diff = endTime `diffUTCTime` startTime
     writeToLog logh $ "Time for the UEs procedures: " ++ (show diff)
+    hClose logh
 
 powerOn :: Handle -> Int -> IO ()
 powerOn logh ueId =
@@ -228,25 +227,15 @@ setupNetwork message ueId logh = do
        where
         epsId = epsRadioBearerIdentity message
         activationComplete = not (((head epsId)== (last epsId) && ((head epsId)== '9')))--arbitrary condition
-         
-      
-        
-
     
-
+    eResponseMessage = eSendMessRrcCR `union` eSendMessRrcCSC `union` eSendMessSecComplete `union` eSendMessUeCapInf `union` eSendMessReconfComplete
+         
   --Output
-  reactimate $ putStrLn . showMessageNumber <$> eMessage
-  reactimate $ putStrLn . rejectMessage <$> eMessageRrcReject
-  reactimate $ sendResponse  <$> eSendMessRrcCR 
-  reactimate $ sendResponse  <$> eSendMessRrcCSC
-  reactimate $ sendResponse <$> eSendMessSecComplete
-  reactimate $ sendResponse <$> eSendMessUeCapInf
-  reactimate $ sendResponse <$> eSendMessReconfComplete
+  reactimate $ sendResponse  <$> eResponseMessage
   reactimate $ writeToLog logh . showMessageNumber <$> eMessage
   reactimate $ (finalLog_ue logh <$> bUeState)  <@> eSendMessReconfComplete 
 
     
-showNbMessages nbMessages = "Nb of messages received in this UE: " ++ show nbMessages
 showMessageNumber (number,sock) = "Message " ++ show number ++ " from eNodeB has arrived"
 rejectMessage (message, _) = "RRC Connection rejected (UE C-RNTI ="++ show (ueCrnti message)++")"
 sendResponse (message,sock) = do
