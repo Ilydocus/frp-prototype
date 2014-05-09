@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-} --allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} 
 module Main (main) where
 
 import Control.Monad (when)
@@ -81,9 +81,6 @@ setupNetwork (messageUe, messageMme) state logh = do
     --Behavior holding the state
     bUeContexts :: Behavior t (IO (TVar EnbMap))
     bUeContexts = pure state
-
-    --A MODIFIER A PARTIR DICI
-    --eMessageRAPreambleDone = (((fakeinitUEContext database) <$> eSendRepRAPreamble))
     
     initUeContext :: IO (TVar EnbMap) -> (RrcMessage, Socket) -> IO ()
     initUeContext state (message, ueSocket) = do
@@ -93,21 +90,14 @@ setupNetwork (messageUe, messageMme) state logh = do
     addImsi :: IO(TVar EnbMap) -> (RrcMessage,Socket,Socket) -> IO ()
     addImsi state (message,_,_)= do
       liftedState <- liftIO state
-  --map<- readTVarIO liftedState
-  --let oldContext = Map.findWithDefault defaultUeContext_enb (ueIdRntiValueCR message) map
       atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addImsi_enb (ueIdentity message)) (ueIdRntiValueCR message) ueMap)
-  --map<- readTVarIO tempDatabase
-  --return ()
 
     addSrb :: IO (TVar EnbMap) -> (RrcMessage, Socket) -> IO ()
     addSrb state (RRCConnectionSetup _ key srb,_)= do
       liftedState <- liftIO state
       atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addSrb_enb srb) key ueMap)
-      
-    {-fakeinitUEContext :: IO(TVar ENBMap) -> (RrcMessage, Socket) -> IO (TVar ENBMap)
-    fakeinitUEContext database (message, ueSocket) = do
-      putStrLn $ "fake init ue context for"++ show (ueTempCRntiValue message)
-      database-}
+
+    --Incoming messages  
     incomingMessageTypeUe :: (RrcMessage,Socket,Socket) -> RrcMessageType
     incomingMessageTypeUe event = case event of
       (RAPreamble _ _,_,_)-> RaP
@@ -130,6 +120,7 @@ setupNetwork (messageUe, messageMme) state logh = do
     eS1ApInitialContextSetupRequest = filterE (\t -> (incomingMessageTypeMme t) == S1ApICSRequest) eMessageMme
     eEndOfProgram = filterE (\t -> (incomingMessageTypeUe t) == EndProgEnb) eMessageUe
 
+    --Responses
     eResponseRaP =
       createRaResponse <$> eRaPreamble
       where
@@ -148,16 +139,6 @@ setupNetwork (messageUe, messageMme) state logh = do
             srbId = genRandId 8 (crnti *4)
             reject = (crnti `mod` 30)== 0
         
-
-    --REGARDER SI BESOIN DE GARDER CA
-    --eRrcCrPart2Done = apply (addSrb <$> bUeContext)  eSendRepRRCConnectionRequest
-
-   
-
-    {-fakeImsi behaviorContent (message,_,_)= do
-      putStrLn $ "faking imsi action to the state"++ show (ueIdRntiValueCR message)
-      
-      database-}
     --IO Responses        
     eResponseRrcCSC =
       (createS1ApIUeM <$> bUeContexts) <@> eRrcConnectionSetupComplete
@@ -177,7 +158,6 @@ setupNetwork (messageUe, messageMme) state logh = do
         createSecurityMCommand state (message,ueSocket,_) = do
           liftedState <- liftIO state
           atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addSecurityKeyEpsId_enb (S1.securityKey message) (S1.epsBearerId message)) ((eNB_UE_S1AP_Id message)`div`17) ueMap)
-          --map <- readTVarIO liftedState
           return (SecurityModeCommand ((eNB_UE_S1AP_Id message)`div`17) (encryptString (S1.securityKey message) "ciphered"),ueSocket)
     
     eResponseSecurityMComplete =
@@ -243,7 +223,6 @@ setupNetwork (messageUe, messageMme) state logh = do
   reactimate $ writeToLog logh . showMessageUe <$> eMessageUe
   reactimate $ writeToLog logh . showMessageMme <$> eMessageMme
   reactimate $ writeToLog logh . showNbMessages <$> eNbMessages
-  --reactimate $ (finalLog_enb logh <$> bUeContexts)  <@> eResponseRrcCRC
   reactimate $ closeLog_enb logh <$> eEndOfProgram
 
 showNbMessages :: Int -> String    
@@ -255,12 +234,6 @@ showMessageUe (message,_,_) = "Message received from UE: " ++ show message
 showMessageMme :: (S1APMessage,Socket,Socket) -> String
 showMessageMme (message,_ ,_) = "Message received from MME: " ++ show message
 
-
-{-sendResponse message (number,sock,mmeSocket) = do
-                             _ <- send sock $ encode message
-                             return ()-}
-
---VOIR POUR REEXTRAIRE LE SEND AT THE END
 sendResponse ::  Handle ->IO(TVar EnbMap)-> (RrcMessage,Socket)-> IO ()
 sendResponse handle state (message, ueSocket) =
   case message of
@@ -300,27 +273,6 @@ sendResponseLast x = do
           _ <- send ueSock $ encode messageUe
           liftIO $ close ueSock
           return ()
-    
-                             
-
-{-sendResponse ::IO(S1APMessage,Socket)-> IO()
-sendResponseToMme x = do
-  (message, mmeSock)<- liftIO x
-  _ <- send mmeSock $ encode message
-  return ()-}
-
-
-
-{-sendResponseEncrypted :: IO (TVar EnbMap) ->IO(RrcMessage,Socket)-> IO ()
-sendResponseEncrypted behaviorContent x = do
-  (message, ueSocket) <- liftIO x
-  tempDatabase <- liftIO behaviorContent      
-  map <- readTVarIO tempDatabase
-  let
-    key = Context.securityKey(Map.findWithDefault defaultEmptyContext (ueCRntiValue message) map)
-    codedMessage = crypt CTR (B.concat (BL.toChunks(encode key))) (B.concat (BL.toChunks(encode (0::Int)))) Encrypt (encode message)                                                         
-  _ <- send ueSocket $ codedMessage
-  return ()-}
 
 encryptString :: Int -> String -> BL.ByteString
 encryptString key message =
