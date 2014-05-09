@@ -49,12 +49,12 @@ data RrcMessage =
   | UplinkInformationTransfer {dedicatedInfoType :: DedicatedInfoType
                               ,message :: !String }
   |EndOfProgram
-  deriving (Eq, Generic, Show)--derived show
+  deriving (Eq, Generic, Show)
 
 instance Binary RrcMessage
          where
            put m = do
-                    --Add a message type prefix to the message
+                    --Add a message type prefix
                     case m of
                      RAPreamble a b -> do
                                      putWord8 0

@@ -125,7 +125,7 @@ setupNetwork (messageUe, messageMme) state logh = do
       createRaResponse <$> eRaPreamble
       where
         createRaResponse (message,ueSock,_) = do
-          (RAResponse RA_RNTI (ueIdRntiValue message) (ueIdCRnti message),ueSock)
+          (RAResponse RA_RNTI (ueIdRntiValue message) (ueIdRntiValue message),ueSock)
 
     eResponseRrcCRequest =
       createRrcCS <$> eRrcConnectionRequest

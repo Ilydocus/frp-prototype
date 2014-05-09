@@ -118,7 +118,7 @@ setupNetwork message ueId logh = do
       (createRrcCRequest <$> bUeState) <@> eRaResponse
       where
         createRrcCRequest state (message,socket) =
-          (RRCConnectionRequest C_RNTI (ueIdRntiValue message) (imsi_ue state),socket)
+          (RRCConnectionRequest C_RNTI (ueIdCRnti message) (imsi_ue state),socket)
         
     eResponseRrcCS =
       (createRrcCSC <$> bUeState) <@> eRrcConnectionSetup
