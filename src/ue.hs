@@ -118,7 +118,7 @@ setupNetwork message ueId logh = do
       (createRrcCRequest <$> bUeState) <@> eRaResponse
       where
         createRrcCRequest state (message,socket) =
-          (RRCConnectionRequest C_RNTI (ueTempCRntiValue message) (imsi_ue state),socket)
+          (RRCConnectionRequest C_RNTI (ueIdRntiValue message) (imsi_ue state),socket)
         
     eResponseRrcCS =
       (createRrcCSC <$> bUeState) <@> eRrcConnectionSetup
@@ -131,8 +131,8 @@ setupNetwork message ueId logh = do
       where
         createSecurityMComplete state (message,socket) =
           if (decode decrypted == "ciphered")
-          then (SecurityModeComplete (ueCRntiValue message) True,socket)
-          else (SecurityModeComplete (ueCRntiValue message) False,socket)
+          then (SecurityModeComplete (ueCRnti message) True,socket)
+          else (SecurityModeComplete (ueCRnti message) False,socket)
           where
             decrypted = decryptResponse (securityKey_ue state) (message_security message)
 
@@ -140,7 +140,7 @@ setupNetwork message ueId logh = do
       createUeCI <$> eUeCapabilityEnquiry
       where
         createUeCI (message,socket) =
-          (UECapabilityInformation  (ueCRntiValue message) (genRandomRatCapabilities ((ueCRntiValue message)*6) message) ,socket)
+          (UECapabilityInformation  (ueCRnti message) (genRandomRatCapabilities ((ueCRnti message)*6) message) ,socket)
           where
             genRandomRatCapabilities seed message =
               zip ratList boolList
@@ -153,8 +153,8 @@ setupNetwork message ueId logh = do
       where
         createRrcCRC (message,socket) =
           if activationComplete
-          then (RRCConnectionReconfigurationComplete (ueCRntiValue message) True,socket)
-          else (RRCConnectionReconfigurationComplete (ueCRntiValue message) False,socket)
+          then (RRCConnectionReconfigurationComplete (ueCRnti message) True,socket)
+          else (RRCConnectionReconfigurationComplete (ueCRnti message) False,socket)
           where
             epsId = epsRadioBearerIdentity message
             activationComplete = not (((head epsId)== (last epsId)) && ((head epsId)== '9'))

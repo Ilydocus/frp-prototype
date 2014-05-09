@@ -10,12 +10,11 @@ module RrcMessages
        ) where
 
 import Data.Binary
-import Data.Binary.Put --added cause of error message
-import Data.Binary.Get --same
+import Data.Binary.Put
+import Data.Binary.Get
 import GHC.Generics
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-
 import Identifiers
 
 data RrcMessage =
@@ -23,29 +22,29 @@ data RrcMessage =
                ,ueIdRntiValue :: !Int}
   | RAResponse {ueIdRntiType :: UeIdRntiType
                ,ueRaRntiValue :: !Int
-               ,ueTempCRntiValue :: !Int}
+               ,ueIdCRnti :: !Int}
   | RRCConnectionRequest {ueIdRntiType :: UeIdRntiType
-               ,ueIdRntiValueCR :: !Int
+               ,ueIdRntiValue :: !Int
                ,ueIdentity :: !IMSI}
-  | RRCConnectionReject {ueCrnti :: !Int
+  | RRCConnectionReject {ueCRnti :: !Int
                         ,waitingTime :: !Int}
-  | RRCConnectionAccept {ueCrnti :: !Int}
+  | RRCConnectionAccept {ueCRnti :: !Int}
   | RRCConnectionSetup {ueIdRntiType :: UeIdRntiType
                ,ueIdRntiValue :: !Int
                ,srbIdentity :: !String}
-  | RRCConnectionSetupComplete {ueCRntiValue :: !Int,
+  | RRCConnectionSetupComplete {ueCRnti :: !Int,
       selectedPlmnIdentity :: !String}
-  | SecurityModeCommand {ueCRntiValue :: !Int
+  | SecurityModeCommand {ueCRnti :: !Int
                          ,message_security :: BL.ByteString}
-  | SecurityModeComplete {ueCRntiValue :: !Int
+  | SecurityModeComplete {ueCRnti :: !Int
                           ,securityModeSuccess :: !Bool}
-  | UECapabilityEnquiry {ueCRntiValue :: !Int
+  | UECapabilityEnquiry {ueCRnti :: !Int
                          ,ueCapabilityRequest :: [RAT]}
-  | UECapabilityInformation {ueCRntiValue :: !Int
+  | UECapabilityInformation {ueCRnti :: !Int
                              ,ueCapabilityRatList :: [(RAT,Bool)]}
-  | RRCConnectionReconfiguration {ueCRntiValue :: !Int
+  | RRCConnectionReconfiguration {ueCRnti :: !Int
                                   ,epsRadioBearerIdentity :: !String}
-  | RRCConnectionReconfigurationComplete {ueCRntiValue :: !Int
+  | RRCConnectionReconfigurationComplete {ueCRnti :: !Int
                                           ,epsRadioBearerActivated :: !Bool}
   | UplinkInformationTransfer {dedicatedInfoType :: DedicatedInfoType
                               ,message :: !String }

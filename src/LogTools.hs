@@ -35,7 +35,7 @@ finalLog_enb handle state message = do
   liftedState <- liftIO state
   map <- readTVarIO liftedState
   let
-    key = ueCRntiValue message
+    key = ueCRnti message
     lastContext = Map.findWithDefault defaultUeContext_enb key map
   writeToLog handle ("UE Context at the end: "++ show lastContext)
 
