@@ -32,7 +32,7 @@ main = do
   actuate network
   eventLoop sources 
 
-eventLoop :: EventSource (S1APMessage, Socket)-> IO ()
+eventLoop :: EventSource (S1ApMessage, Socket)-> IO ()
 eventLoop message = withSocketsDo $ do
   listenSocket <- listenOn $ PortNumber 43001
   forever $ do
@@ -47,7 +47,7 @@ eventLoop message = withSocketsDo $ do
 ------------------------------------------------------}
 
 setupNetwork :: forall t. Frameworks t =>
-   EventSource (S1APMessage,Socket) -> IO (TVar MmeMap)-> Handle -> Moment t ()
+   EventSource (S1ApMessage,Socket) -> IO (TVar MmeMap)-> Handle -> Moment t ()
 setupNetwork message state logh = do
   eMessage <- fromAddHandler (addHandler message)
   let
@@ -63,16 +63,16 @@ setupNetwork message state logh = do
     bUeContexts :: Behavior t (IO (TVar MmeMap))
     bUeContexts = pure state
     
-    initUeContext :: IO(TVar MmeMap) -> (S1APMessage, Socket) -> IO ()
+    initUeContext :: IO(TVar MmeMap) -> (S1ApMessage, Socket) -> IO ()
     initUeContext state (message, socket) = do
       liftedState <- liftIO $ state
-      atomically $ modifyTVar liftedState (\mmeMap -> Map.insert (eNB_UE_S1AP_Id message) (initialUeContext_mme (mme_UE_S1AP_Id message) (S1Messages.securityKey message)) mmeMap )
+      atomically $ modifyTVar liftedState (\mmeMap -> Map.insert (enb_Ue_S1Ap_Id message) (initialUeContext_mme (mme_Ue_S1Ap_Id message) (S1Messages.securityKey message)) mmeMap )
 
-    incomingMessageType :: (S1APMessage, Socket) -> S1MessageType
+    incomingMessageType :: (S1ApMessage, Socket) -> S1MessageType
     incomingMessageType event = case event of
-      (S1APInitialUEMessage a b c,_) -> S1ApIUeM
-      (S1APInitialContextSetupResponse a b,_)-> S1ApICSResponse
-      (EndOfProgramMME,_)-> EndProgMme
+      (S1ApInitialUeMessage a b c,_) -> S1ApIUeM
+      (S1ApInitialContextSetupResponse a b,_)-> S1ApICSResponse
+      (EndOfProgramMme,_)-> EndProgMme
 
     eInitialUeMessage = filterE (\t -> (incomingMessageType t) == S1ApIUeM) eMessage
     eInitialContextSetupResponse = filterE (\t -> (incomingMessageType t) == S1ApICSResponse) eMessage
@@ -82,7 +82,7 @@ setupNetwork message state logh = do
       createS1ApICSRequest <$> eInitialUeMessage
       where
         createS1ApICSRequest (message,mmeSocket) =
-          (S1APInitialContextSetupRequest ((eNB_UE_S1AP_Id message)-4) (eNB_UE_S1AP_Id message) (((eNB_UE_S1AP_Id message)`div`17)*18) (genRandId 7 ((eNB_UE_S1AP_Id message)-4)),mmeSocket)
+          (S1ApInitialContextSetupRequest ((enb_Ue_S1Ap_Id message)-4) (enb_Ue_S1Ap_Id message) (((enb_Ue_S1Ap_Id message)`div`17)*18) (genRandId 7 ((enb_Ue_S1Ap_Id message)-4)),mmeSocket)
 
   --Output
   reactimate $ sendResponse <$> eResponseS1ApIUeM
@@ -95,10 +95,10 @@ setupNetwork message state logh = do
 showNbMessages :: Int -> String    
 showNbMessages nbMessages = "Total number of messages received in the MME: " ++ show nbMessages
 
-showMessage :: (S1APMessage,Socket) -> String
+showMessage :: (S1ApMessage,Socket) -> String
 showMessage (message, _) = "Message received:  " ++ show message
 
-sendResponse :: (S1APMessage,Socket) -> IO ()
+sendResponse :: (S1ApMessage,Socket) -> IO ()
 sendResponse (message,sock) = do
                              _ <- send sock $ encode message
                              return ()

@@ -70,20 +70,20 @@ endOfProgram =
   where
     endOfProgram' :: Socket -> IO ()
     endOfProgram' sock = do
-      _ <- send sock $ encode (EndOfProgram)
+      _ <- send sock $ encode (EndOfProgramEnb)
       return ()
 
 eventLoop :: EventSource (RrcMessage,Socket)-> Socket-> Int -> IO ()
 eventLoop message sock ueId = withSocketsDo $ do
-       _ <- send sock $ encode (RAPreamble RA_RNTI ueId)
+       _ <- send sock $ encode (RaPreamble RA_RNTI ueId)
        loop
        where loop = do
                messDec <- decode <$> recv sock 1024
                fire message (messDec,sock)
                when (notlastMessage messDec) loop
                where notlastMessage mess = case mess of
-                       (RRCConnectionAccept _ ) -> False
-                       (RRCConnectionReject _ _) -> False
+                       (RrcConnectionAccept _ ) -> False
+                       (RrcConnectionReject _ _) -> False
                        _ -> True
          
 {-----------------------------------------------------
@@ -100,13 +100,13 @@ setupNetwork message ueId logh = do
 
     incomingMessageType :: (RrcMessage, Socket) -> RrcMessageType
     incomingMessageType event = case event of
-      (RAResponse _ _ _,_)-> RaR
-      (RRCConnectionSetup _ _ _, _)-> RrcCS
+      (RaResponse _ _ _,_)-> RaR
+      (RrcConnectionSetup _ _ _, _)-> RrcCS
       (SecurityModeCommand _ _,_)-> SecurityMCommand
-      (UECapabilityEnquiry _ _,_)-> UeCE
-      (RRCConnectionReconfiguration _ _,_)-> RrcCReconfiguration
-      (RRCConnectionReject _ _,_)-> RrcCReject
-      (RRCConnectionAccept _,_)-> RrcCA
+      (UeCapabilityEnquiry _ _,_)-> UeCE
+      (RrcConnectionReconfiguration _ _,_)-> RrcCReconfiguration
+      (RrcConnectionReject _ _,_)-> RrcCReject
+      (RrcConnectionAccept _,_)-> RrcCA
        
     eRaResponse = filterE (\t -> (incomingMessageType t) == RaR) eMessage
     eRrcConnectionSetup = filterE (\t -> (incomingMessageType t) == RrcCS) eMessage
@@ -118,13 +118,13 @@ setupNetwork message ueId logh = do
       (createRrcCRequest <$> bUeState) <@> eRaResponse
       where
         createRrcCRequest state (message,socket) =
-          (RRCConnectionRequest C_RNTI (ueIdCRnti message) (imsi_ue state),socket)
+          (RrcConnectionRequest C_RNTI (ueIdCRnti message) (imsi_ue state),socket)
         
     eResponseRrcCS =
       (createRrcCSC <$> bUeState) <@> eRrcConnectionSetup
       where
         createRrcCSC state (message,socket) =
-          (RRCConnectionSetupComplete (ueIdRntiValue message) (mcc(imsi_ue state) ++ mnc(imsi_ue state)),socket)
+          (RrcConnectionSetupComplete (ueIdRntiValue message) (mcc(imsi_ue state) ++ mnc(imsi_ue state)),socket)
       
     eResponseSecurityMCommand =
       (createSecurityMComplete <$> bUeState) <@> eSecurityModeCommand
@@ -140,7 +140,7 @@ setupNetwork message ueId logh = do
       createUeCI <$> eUeCapabilityEnquiry
       where
         createUeCI (message,socket) =
-          (UECapabilityInformation  (ueCRnti message) (genRandomRatCapabilities ((ueCRnti message)*6) message) ,socket)
+          (UeCapabilityInformation  (ueCRnti message) (genRandomRatCapabilities ((ueCRnti message)*6) message) ,socket)
           where
             genRandomRatCapabilities seed message =
               zip ratList boolList
@@ -153,8 +153,8 @@ setupNetwork message ueId logh = do
       where
         createRrcCRC (message,socket) =
           if activationComplete
-          then (RRCConnectionReconfigurationComplete (ueCRnti message) True,socket)
-          else (RRCConnectionReconfigurationComplete (ueCRnti message) False,socket)
+          then (RrcConnectionReconfigurationComplete (ueCRnti message) True,socket)
+          else (RrcConnectionReconfigurationComplete (ueCRnti message) False,socket)
           where
             epsId = epsRadioBearerIdentity message
             activationComplete = not (((head epsId)== (last epsId)) && ((head epsId)== '9'))

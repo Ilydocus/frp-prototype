@@ -27,7 +27,7 @@ import Identifiers
 import UeContextStates as Context
 import LogTools
 
-type EnbMap = Map.Map Int UeContext_eNB
+type EnbMap = Map.Map Int UeContext_enb
 
 main :: IO ()
 main = do
@@ -40,7 +40,7 @@ main = do
 
 makeSources = (,) <$> newAddHandler <*> newAddHandler 
 
-eventLoop :: (EventSource (RrcMessage, Socket,Socket), EventSource (S1APMessage,Socket,Socket))-> IO ()
+eventLoop :: (EventSource (RrcMessage, Socket,Socket), EventSource (S1ApMessage,Socket,Socket))-> IO ()
 eventLoop (messageUe, messageMme) = withSocketsDo $ do
   listenSocket <- listenOn $ PortNumber 43000
   forever $ do
@@ -65,7 +65,7 @@ eventLoop (messageUe, messageMme) = withSocketsDo $ do
 ------------------------------------------------------}
 
 setupNetwork :: forall t. Frameworks t =>
-   (EventSource (RrcMessage,Socket,Socket), EventSource(S1APMessage, Socket,Socket))-> IO(TVar EnbMap) -> Handle -> Moment t ()
+   (EventSource (RrcMessage,Socket,Socket), EventSource(S1ApMessage, Socket,Socket))-> IO(TVar EnbMap) -> Handle -> Moment t ()
 setupNetwork (messageUe, messageMme) state logh = do
   eMessageUe <- fromAddHandler (addHandler messageUe)
   eMessageMme <- fromAddHandler (addHandler messageMme)
@@ -93,23 +93,23 @@ setupNetwork (messageUe, messageMme) state logh = do
       atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addImsi_enb (ueIdentity message)) (ueIdRntiValue message) ueMap)
 
     addSrb :: IO (TVar EnbMap) -> (RrcMessage, Socket) -> IO ()
-    addSrb state (RRCConnectionSetup _ key srb,_)= do
+    addSrb state (RrcConnectionSetup _ key srb,_)= do
       liftedState <- liftIO state
       atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addSrb_enb srb) key ueMap)
 
     --Incoming messages  
     incomingMessageTypeUe :: (RrcMessage,Socket,Socket) -> RrcMessageType
     incomingMessageTypeUe event = case event of
-      (RAPreamble _ _,_,_)-> RaP
-      (RRCConnectionRequest _ _ _, _,_)-> RrcCRequest
-      (RRCConnectionSetupComplete _ _,_,_)-> RrcCSC
+      (RaPreamble _ _,_,_)-> RaP
+      (RrcConnectionRequest _ _ _, _,_)-> RrcCRequest
+      (RrcConnectionSetupComplete _ _,_,_)-> RrcCSC
       (SecurityModeComplete _ _,_,_)-> SecurityMComplete
-      (UECapabilityInformation _ _,_,_)-> UeCI
-      (RRCConnectionReconfigurationComplete _ _,_,_)-> RrcCRC
-      (EndOfProgram,_,_)->EndProgEnb
-    incomingMessageTypeMme :: (S1APMessage,Socket,Socket) -> S1MessageType
+      (UeCapabilityInformation _ _,_,_)-> UeCI
+      (RrcConnectionReconfigurationComplete _ _,_,_)-> RrcCRC
+      (EndOfProgramEnb,_,_)->EndProgEnb
+    incomingMessageTypeMme :: (S1ApMessage,Socket,Socket) -> S1MessageType
     incomingMessageTypeMme event = case event of
-      (S1APInitialContextSetupRequest _ _ _ _,_,_) -> S1ApICSRequest
+      (S1ApInitialContextSetupRequest _ _ _ _,_,_) -> S1ApICSRequest
 
     eRaPreamble = filterE (\t -> (incomingMessageTypeUe t) == RaP) eMessageUe
     eRrcConnectionRequest = filterE (\t -> (incomingMessageTypeUe t) == RrcCRequest) eMessageUe
@@ -125,15 +125,15 @@ setupNetwork (messageUe, messageMme) state logh = do
       createRaResponse <$> eRaPreamble
       where
         createRaResponse (message,ueSock,_) = do
-          (RAResponse RA_RNTI (ueIdRntiValue message) (ueIdRntiValue message),ueSock)
+          (RaResponse RA_RNTI (ueIdRntiValue message) (ueIdRntiValue message),ueSock)
 
     eResponseRrcCRequest =
       createRrcCS <$> eRrcConnectionRequest
       where
         createRrcCS (message, ueSocket, _) =
           if reject
-          then (RRCConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket)
-          else (RRCConnectionSetup C_RNTI crnti srbId,ueSocket)
+          then (RrcConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket)
+          else (RrcConnectionSetup C_RNTI crnti srbId,ueSocket)
           where
             crnti = ueIdRntiValue message
             srbId = genRandId 8 (crnti *4)
@@ -147,18 +147,18 @@ setupNetwork (messageUe, messageMme) state logh = do
           liftedState <- liftIO state
           atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (changeStateAddEnbId_enb enbUeId) (ueCRnti message) ueMap)
           map <- readTVarIO liftedState
-          return(S1APInitialUEMessage enbUeId EPSAttach (imsi (Map.findWithDefault defaultUeContext_enb (ueCRnti message) map)),mmeSocket)
+          return(S1ApInitialUeMessage enbUeId EpsAttach (imsi (Map.findWithDefault defaultUeContext_enb (ueCRnti message) map)),mmeSocket)
           where
             enbUeId= 17*(ueCRnti message)
                
     eResponseS1ApICSRequest =
       (createSecurityMCommand <$> bUeContexts) <@> eS1ApInitialContextSetupRequest
       where
-        createSecurityMCommand :: IO(TVar EnbMap)-> (S1APMessage,Socket,Socket)-> IO(RrcMessage,Socket)
+        createSecurityMCommand :: IO(TVar EnbMap)-> (S1ApMessage,Socket,Socket)-> IO(RrcMessage,Socket)
         createSecurityMCommand state (message,ueSocket,_) = do
           liftedState <- liftIO state
-          atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addSecurityKeyEpsId_enb (S1.securityKey message) (S1.epsBearerId message)) ((eNB_UE_S1AP_Id message)`div`17) ueMap)
-          return (SecurityModeCommand ((eNB_UE_S1AP_Id message)`div`17) (encryptString (S1.securityKey message) "ciphered"),ueSocket)
+          atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addSecurityKeyEpsId_enb (S1.securityKey message) (S1.epsBearerId message)) ((enb_Ue_S1Ap_Id message)`div`17) ueMap)
+          return (SecurityModeCommand ((enb_Ue_S1Ap_Id message)`div`17) (encryptString (S1.securityKey message) "ciphered"),ueSocket)
     
     eResponseSecurityMComplete =
       (createUeCE <$> bUeContexts) <@> eSecurityModeComplete
@@ -167,10 +167,10 @@ setupNetwork (messageUe, messageMme) state logh = do
         createUeCE state (message, ueSocket, _) =
           if (securityModeSuccess message)
           then do
-            return (UECapabilityEnquiry crnti [E_UTRA,UTRA,GERAN_CS,GERAN_PS,CDMA2000],ueSocket)
+            return (UeCapabilityEnquiry crnti [E_UTRA,UTRA,GERAN_CS,GERAN_PS,CDMA2000],ueSocket)
           else do
             _ <- changeStateToIdle crnti state
-            return (RRCConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket)
+            return (RrcConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket)
             where
               crnti = ueCRnti message
         
@@ -186,7 +186,7 @@ setupNetwork (messageUe, messageMme) state logh = do
           liftedState <- liftIO state
           atomically $ modifyTVar liftedState (\ueMap -> Map.adjust (addRat_enb (ueCapabilityRatList message)) (ueCRnti message) ueMap)
           map <- readTVarIO liftedState
-          return (RRCConnectionReconfiguration (ueCRnti message) (Context.epsBearerId (Map.findWithDefault defaultUeContext_enb (ueCRnti message) map)) ,ueSocket)       
+          return (RrcConnectionReconfiguration (ueCRnti message) (Context.epsBearerId (Map.findWithDefault defaultUeContext_enb (ueCRnti message) map)) ,ueSocket)       
 
     eResponseRrcCRC =
       (createResponseRrcCRC <$> bUeContexts) <@> eRrcConnectionReconfigurationComplete
@@ -197,17 +197,17 @@ setupNetwork (messageUe, messageMme) state logh = do
           then do
             enbId <- liftIO $ getEnbId state crnti
             finalLog_enb logh state message
-            return (ReconfigurationCompleted (S1APInitialContextSetupResponse enbId (genRandId 5 (enbId +45)),mmeSocket,(RRCConnectionAccept crnti),ueSocket))
+            return (ReconfigurationCompleted (S1ApInitialContextSetupResponse enbId (genRandId 5 (enbId +45)),mmeSocket,(RrcConnectionAccept crnti),ueSocket))
           else do
             _ <- changeStateToIdle crnti state
             finalLog_enb logh state message
-            return (ReconfigurationFailed (RRCConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket))
+            return (ReconfigurationFailed (RrcConnectionReject crnti ((crnti `mod` 15)+ 1),ueSocket))
           where
             crnti = ueCRnti message
             getEnbId state key= do
               liftedState <- liftIO state
               map <- readTVarIO liftedState
-              return (eNBUES1APid (Map.findWithDefault defaultUeContext_enb key map))
+              return (enbUeS1ApId (Map.findWithDefault defaultUeContext_enb key map))
 
     eResponseMessage = eResponseRaP `union` eResponseRrcCRequest
     eResponseMessageIO = eResponseS1ApICSRequest `union` eResponseSecurityMComplete `union` eResponseUeCI 
@@ -229,15 +229,15 @@ showNbMessages :: Int -> String
 showNbMessages nbMessages = "Total number of messages received in the eNodeB: " ++ show nbMessages
 
 showMessageUe :: (RrcMessage,Socket,Socket) -> String
-showMessageUe (message,_,_) = "Message received from UE: " ++ show message
+showMessageUe (message,_,_) = "Message received from Ue: " ++ show message
 
-showMessageMme :: (S1APMessage,Socket,Socket) -> String
+showMessageMme :: (S1ApMessage,Socket,Socket) -> String
 showMessageMme (message,_ ,_) = "Message received from MME: " ++ show message
 
 sendResponse ::  Handle ->IO(TVar EnbMap)-> (RrcMessage,Socket)-> IO ()
 sendResponse handle state (message, ueSocket) =
   case message of
-    (RRCConnectionReject key _) -> do
+    (RrcConnectionReject key _) -> do
       liftedState <- liftIO state
       map <- readTVarIO liftedState
       let lastContext =  Map.findWithDefault defaultUeContext_enb key map
@@ -254,7 +254,7 @@ sendResponseIO x = do
   _ <- send socket $ encode message
   return ()
 
-sendResponseIOmme ::IO (S1APMessage,Socket) -> IO()
+sendResponseIOmme ::IO (S1ApMessage,Socket) -> IO()
 sendResponseIOmme x = do
   (message, socket)<- liftIO x
   _ <- send socket $ encode message

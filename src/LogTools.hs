@@ -19,7 +19,7 @@ import Control.Monad.IO.Class
 import Control.Concurrent.STM
 
 type MmeMap = Map.Map Int UeContext_mme
-type EnbMap = Map.Map Int UeContext_eNB
+type EnbMap = Map.Map Int UeContext_enb
 
 writeToLog :: Handle -> String -> IO ()
 writeToLog handle message = do
@@ -41,20 +41,20 @@ finalLog_enb handle state message = do
 
 closeLog_enb :: Handle -> (RrcMessage, Socket, Socket) ->IO()
 closeLog_enb handle (_,ueSocket,mmeSocket) = do
-   _ <- send mmeSocket $ encode (EndOfProgramMME)
+   _ <- send mmeSocket $ encode (EndOfProgramMme)
    liftIO $ close ueSocket
    hClose handle
 
-finalLog_mme :: Handle -> IO (TVar MmeMap) -> (S1APMessage, Socket) -> IO()
+finalLog_mme :: Handle -> IO (TVar MmeMap) -> (S1ApMessage, Socket) -> IO()
 finalLog_mme handle mmeState (message, mmeSocket) = do
   liftedState <- liftIO mmeState
   map <- readTVarIO liftedState
   let
-    key = eNB_UE_S1AP_Id message
+    key = enb_Ue_S1Ap_Id message
     lastContext = Map.findWithDefault defaultUeContext_mme key map
   writeToLog handle ("UE Context at the end: "++ show lastContext)
 
-closeLog_mme :: Handle ->(S1APMessage, Socket)-> IO()
+closeLog_mme :: Handle ->(S1ApMessage, Socket)-> IO()
 closeLog_mme handle (_,mmeSocket)= do
   liftIO $ close mmeSocket
   hClose handle

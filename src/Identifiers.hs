@@ -1,6 +1,6 @@
 module Identifiers (
-             IMSI (..),
-             genIMSI,
+             Imsi (..),
+             genImsi,
              genRandId
                    )
        where
@@ -10,18 +10,18 @@ import Control.Monad.IO.Class ()
 import Data.Binary
 
 -- IMSI
-data IMSI = IMSI {
+data Imsi = Imsi {
   mcc :: !String,
   mnc :: !String,
   msin :: !String
   }
             deriving (Eq)
 
-instance Show IMSI
+instance Show Imsi
          where
            show m = show ((mcc m)++"-"++(mnc m)++"-"++(msin m))
 
-instance Binary IMSI
+instance Binary Imsi
          where
            put m = do
              put (mcc m)
@@ -31,11 +31,11 @@ instance Binary IMSI
                  mccTemp <- get
                  mncTemp <- get
                  msinTemp <- get
-                 return (IMSI mccTemp mncTemp msinTemp)
+                 return (Imsi mccTemp mncTemp msinTemp)
 
-genIMSI :: Int -> Int -> IMSI
-genIMSI seed1 seed2= --all the imsi are swedish ones
-  IMSI {mcc = "260", mnc = genRandId 2 seed1 , msin = genRandId 10 seed2}
+genImsi :: Int -> Int -> Imsi
+genImsi seed1 seed2= --all the imsi are swedish ones
+  Imsi {mcc = "260", mnc = genRandId 2 seed1 , msin = genRandId 10 seed2}
 
 -- Random id string
 genRandId :: Int -> Int -> String

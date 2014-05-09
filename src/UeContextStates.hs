@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 module UeContextStates
-       ( UeContext_eNB (..)
+       ( UeContext_enb (..)
        , UeContext_mme (..)
        , UeContext_ue (..)
-       , RRCState (..)
+       , RrcState (..)
        , initialUeState
        , initialUeContext_enb
        , defaultUeContext_enb  
@@ -26,37 +26,37 @@ import Identifiers
      Context Definitions
 ------------------------------------------------------}
 
-data UeContext_eNB = UeContext_eNB{
-  rrcState :: RRCState,
+data UeContext_enb = UeContext_enb{
+  rrcState :: RrcState,
   c_rnti :: !Int,
-  imsi :: !IMSI,
+  imsi :: !Imsi,
   srbIdentity :: !String,
-  eNBUES1APid :: !Int,
-  ratCapabilities :: [(Rrc.RAT,Bool)],
+  enbUeS1ApId :: !Int,
+  ratCapabilities :: [(Rrc.Rat,Bool)],
   securityKey :: !Int,
   epsBearerId :: !String  
   }
 
-instance Show UeContext_eNB
+instance Show UeContext_enb
   where
-    show m = "UeContext_eNB {rrc state:"++ show (rrcState m) ++ " c-rnti:" ++ show (c_rnti m)++ " imsi:" ++ show (imsi m)++ "srb Identity:"++show (srbIdentity m)++"enb S1 Identity:"++show (eNBUES1APid m)++ "}"
---affichage incomplet
-data RRCState =
+    show m = "UeContext_eNB {RRC state: "++ show (rrcState m) ++ " C-RNTI: " ++ show (c_rnti m)++ " IMSI: " ++ show (imsi m)++ " SRB Identity: "++show (srbIdentity m)++" eNB S1 Identity:"++show (enbUeS1ApId m)++ " RAT Capabilities: "++show (ratCapabilities m)++" Security Key: "++show (securityKey m)++" EPS Bearer Id: "++show (epsBearerId m)++"}"
+
+data RrcState =
     RRC_Idle
   | RRC_Connected
     deriving Show
 
 data UeContext_mme = UeContext_mme{
-  mmeUES1APid :: !Int,
+  mmeUeS1ApId :: !Int,
   securityKey_mme :: !Int
   }
 
 instance Show UeContext_mme
   where
-    show m = "UeContext_mme {MME S1AP UE ID: "++ show (mmeUES1APid m) ++ " Security Key: " ++ show (securityKey_mme m)++ "}"
+    show m = "UeContext_mme {MME S1AP UE ID: "++ show (mmeUeS1ApId m) ++ " Security Key: " ++ show (securityKey_mme m)++ "}"
 
 data UeContext_ue = UeContext_ue{
-  imsi_ue :: !IMSI,
+  imsi_ue :: !Imsi,
   securityKey_ue :: !Int,
   srbId :: !String
   }
@@ -70,41 +70,41 @@ instance Show UeContext_ue
 ------------------------------------------------------}
 initialUeState :: Int -> UeContext_ue
 initialUeState seed = UeContext_ue{
-  imsi_ue = genIMSI seed  (seed+2),
+  imsi_ue = genImsi seed  (seed+2),
   securityKey_ue = seed*18,
   srbId = "0"
   }
 
-initialUeContext_enb :: Int -> UeContext_eNB
-initialUeContext_enb crnti = UeContext_eNB {
+initialUeContext_enb :: Int -> UeContext_enb
+initialUeContext_enb crnti = UeContext_enb {
   rrcState = RRC_Idle,
   c_rnti = crnti,
-  imsi = IMSI "0" "0" "0",
+  imsi = Imsi "0" "0" "0",
   srbIdentity = "0",
-  eNBUES1APid = 0,
+  enbUeS1ApId = 0,
   ratCapabilities =[(Rrc.E_UTRA,False)],
   securityKey = 0,
   epsBearerId = "0" }
 
-defaultUeContext_enb :: UeContext_eNB
-defaultUeContext_enb = UeContext_eNB {rrcState = RRC_Idle,
+defaultUeContext_enb :: UeContext_enb
+defaultUeContext_enb = UeContext_enb {rrcState = RRC_Idle,
   c_rnti = -1,
-  imsi = IMSI "0" "0" "0",
+  imsi = Imsi "0" "0" "0",
   srbIdentity = "0",
-  eNBUES1APid = 0,
+  enbUeS1ApId = 0,
   ratCapabilities =[(Rrc.E_UTRA,False)],
   securityKey = 0,
   epsBearerId = "0" }
 
 initialUeContext_mme :: Int -> Int -> UeContext_mme
 initialUeContext_mme mmeId securityKey= UeContext_mme{
-  mmeUES1APid = mmeId,
+  mmeUeS1ApId = mmeId,
   securityKey_mme = securityKey
   }
 
 defaultUeContext_mme :: UeContext_mme
 defaultUeContext_mme = UeContext_mme{
-  mmeUES1APid = -1,
+  mmeUeS1ApId = -1,
   securityKey_mme = -1
   }
 
@@ -118,73 +118,73 @@ addSrb_ue oldState (message, _)= UeContext_ue{
   srbId = Rrc.srbIdentity message
   }
 
-addSrb_enb :: String -> UeContext_eNB -> UeContext_eNB
-addSrb_enb srb oldContent =  UeContext_eNB {
+addSrb_enb :: String -> UeContext_enb -> UeContext_enb
+addSrb_enb srb oldContent =  UeContext_enb {
   rrcState = rrcState oldContent,
   c_rnti = c_rnti oldContent,
   imsi = imsi oldContent,
   srbIdentity = srb,
-  eNBUES1APid =eNBUES1APid oldContent ,
+  enbUeS1ApId =enbUeS1ApId oldContent ,
   ratCapabilities =ratCapabilities oldContent,
   securityKey = securityKey oldContent,
   epsBearerId = epsBearerId oldContent
   }
 
-addImsi_enb :: IMSI -> UeContext_eNB -> UeContext_eNB
-addImsi_enb imsi oldContent = UeContext_eNB {
+addImsi_enb :: Imsi -> UeContext_enb -> UeContext_enb
+addImsi_enb imsi oldContent = UeContext_enb {
   rrcState = rrcState oldContent,
   c_rnti = c_rnti oldContent,
   imsi = imsi,
   srbIdentity = srbIdentity oldContent,
-  eNBUES1APid =eNBUES1APid oldContent ,
+  enbUeS1ApId =enbUeS1ApId oldContent ,
   ratCapabilities =ratCapabilities oldContent,
   securityKey = securityKey oldContent,
   epsBearerId = epsBearerId oldContent
   }
 
-changeStateAddEnbId_enb :: Int -> UeContext_eNB -> UeContext_eNB
-changeStateAddEnbId_enb enbId oldContent =  UeContext_eNB {
+changeStateAddEnbId_enb :: Int -> UeContext_enb -> UeContext_enb
+changeStateAddEnbId_enb enbId oldContent =  UeContext_enb {
   rrcState =RRC_Connected,
   c_rnti = c_rnti oldContent,
   imsi = imsi oldContent,
   srbIdentity = srbIdentity oldContent,
-  eNBUES1APid =enbId,
+  enbUeS1ApId =enbId,
   ratCapabilities =ratCapabilities oldContent,
   securityKey = securityKey oldContent,
   epsBearerId = epsBearerId oldContent
   }
 
-addSecurityKeyEpsId_enb :: Int -> String -> UeContext_eNB -> UeContext_eNB
-addSecurityKeyEpsId_enb key epsId oldContent =  UeContext_eNB{
+addSecurityKeyEpsId_enb :: Int -> String -> UeContext_enb -> UeContext_enb
+addSecurityKeyEpsId_enb key epsId oldContent =  UeContext_enb{
   rrcState =rrcState oldContent,
   c_rnti = c_rnti oldContent,
   imsi = imsi oldContent,
   srbIdentity = srbIdentity oldContent,
-  eNBUES1APid =eNBUES1APid oldContent,
+  enbUeS1ApId =enbUeS1ApId oldContent,
   ratCapabilities =ratCapabilities oldContent,
   securityKey = key,
   epsBearerId = epsId
   }
 
-changeStateToIdle_enb :: UeContext_eNB -> UeContext_eNB
-changeStateToIdle_enb oldContent =  UeContext_eNB {
+changeStateToIdle_enb :: UeContext_enb -> UeContext_enb
+changeStateToIdle_enb oldContent =  UeContext_enb {
   rrcState =RRC_Idle,
   c_rnti = c_rnti oldContent,
   imsi = imsi oldContent,
   srbIdentity = srbIdentity oldContent,
-  eNBUES1APid =eNBUES1APid oldContent,
+  enbUeS1ApId =enbUeS1ApId oldContent,
   ratCapabilities =ratCapabilities oldContent,
   securityKey = securityKey oldContent,
   epsBearerId = epsBearerId oldContent
   }
 
-addRat_enb :: [(Rrc.RAT,Bool)] -> UeContext_eNB -> UeContext_eNB
-addRat_enb ratList oldContent =  UeContext_eNB {
+addRat_enb :: [(Rrc.Rat,Bool)] -> UeContext_enb -> UeContext_enb
+addRat_enb ratList oldContent =  UeContext_enb {
   rrcState =rrcState oldContent,
   c_rnti = c_rnti oldContent,
   imsi = imsi oldContent,
   srbIdentity = srbIdentity oldContent,
-  eNBUES1APid =eNBUES1APid oldContent,
+  enbUeS1ApId =enbUeS1ApId oldContent,
   ratCapabilities =ratList,
   securityKey = securityKey oldContent,
   epsBearerId = epsBearerId oldContent

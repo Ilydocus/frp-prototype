@@ -4,7 +4,7 @@ module RrcMessages
        , encode
        , decode
        , UeIdRntiType (..)
-       , RAT (..)
+       , Rat (..)
        , RrcMessageType (..)  
        ) where
 
@@ -17,35 +17,35 @@ import qualified Data.ByteString.Lazy as BL
 import Identifiers
 
 data RrcMessage =
-    RAPreamble {ueIdRntiType :: UeIdRntiType
+    RaPreamble {ueIdRntiType :: UeIdRntiType
                ,ueIdRntiValue :: !Int}
-  | RAResponse {ueIdRntiType :: UeIdRntiType
+  | RaResponse {ueIdRntiType :: UeIdRntiType
                ,ueRaRntiValue :: !Int
                ,ueIdCRnti :: !Int}
-  | RRCConnectionRequest {ueIdRntiType :: UeIdRntiType
+  | RrcConnectionRequest {ueIdRntiType :: UeIdRntiType
                           ,ueIdRntiValue :: !Int
-                          ,ueIdentity :: !IMSI}
-  | RRCConnectionReject {ueCRnti :: !Int
+                          ,ueIdentity :: !Imsi}
+  | RrcConnectionReject {ueCRnti :: !Int
                         ,waitingTime :: !Int}
-  | RRCConnectionAccept {ueCRnti :: !Int}
-  | RRCConnectionSetup {ueIdRntiType :: UeIdRntiType
+  | RrcConnectionAccept {ueCRnti :: !Int}
+  | RrcConnectionSetup {ueIdRntiType :: UeIdRntiType
                         ,ueIdRntiValue :: !Int
                         ,srbIdentity :: !String}
-  | RRCConnectionSetupComplete {ueCRnti :: !Int,
+  | RrcConnectionSetupComplete {ueCRnti :: !Int,
                                 selectedPlmnIdentity :: !String}
   | SecurityModeCommand {ueCRnti :: !Int
                         ,message_security :: BL.ByteString}
   | SecurityModeComplete {ueCRnti :: !Int
                          ,securityModeSuccess :: !Bool}
-  | UECapabilityEnquiry {ueCRnti :: !Int
-                        ,ueCapabilityRequest :: [RAT]}
-  | UECapabilityInformation {ueCRnti :: !Int
-                            ,ueCapabilityRatList :: [(RAT,Bool)]}
-  | RRCConnectionReconfiguration {ueCRnti :: !Int
+  | UeCapabilityEnquiry {ueCRnti :: !Int
+                        ,ueCapabilityRequest :: [Rat]}
+  | UeCapabilityInformation {ueCRnti :: !Int
+                            ,ueCapabilityRatList :: [(Rat,Bool)]}
+  | RrcConnectionReconfiguration {ueCRnti :: !Int
                                  ,epsRadioBearerIdentity :: !String}
-  | RRCConnectionReconfigurationComplete {ueCRnti :: !Int
+  | RrcConnectionReconfigurationComplete {ueCRnti :: !Int
                                          ,epsRadioBearerActivated :: !Bool}
-  |EndOfProgram
+  |EndOfProgramEnb
   deriving (Eq, Generic, Show)
 
 instance Binary RrcMessage
@@ -53,26 +53,26 @@ instance Binary RrcMessage
            put m = do
                     --Add a message type prefix
                     case m of
-                     RAPreamble a b -> do
+                     RaPreamble a b -> do
                                      putWord8 0
                                      put a
                                      put b
-                     RAResponse a b c -> do
+                     RaResponse a b c -> do
                                      putWord8 1
                                      put a
                                      put b
                                      put c
-                     RRCConnectionRequest a b c -> do
+                     RrcConnectionRequest a b c -> do
                                      putWord8 2
                                      put a
                                      put b
                                      put c
-                     RRCConnectionSetup a b c -> do
+                     RrcConnectionSetup a b c -> do
                                      putWord8 3
                                      put a
                                      put b
                                      put c
-                     RRCConnectionSetupComplete a b -> do
+                     RrcConnectionSetupComplete a b -> do
                                      putWord8 4
                                      put a
                                      put b
@@ -84,56 +84,56 @@ instance Binary RrcMessage
                                      putWord8 8
                                      put a
                                      put b
-                     UECapabilityEnquiry a b -> do
+                     UeCapabilityEnquiry a b -> do
                                      putWord8 9
                                      put a
                                      put b
-                     UECapabilityInformation a b -> do
+                     UeCapabilityInformation a b -> do
                                      putWord8 10
                                      put a
                                      put b
-                     RRCConnectionReconfiguration a b -> do
+                     RrcConnectionReconfiguration a b -> do
                                      putWord8 11
                                      put a
                                      put b
-                     RRCConnectionReconfigurationComplete a b -> do
+                     RrcConnectionReconfigurationComplete a b -> do
                                      putWord8 12
                                      put a
                                      put b
-                     RRCConnectionReject a b -> do
+                     RrcConnectionReject a b -> do
                                      putWord8 14
                                      put a
                                      put b
-                     RRCConnectionAccept a -> do
+                     RrcConnectionAccept a -> do
                                      putWord8 15
                                      put a
-                     EndOfProgram -> putWord8 16
+                     EndOfProgramEnb -> putWord8 16
 
            get = do id<- getWord8
                     case id of
                       0 ->do
                         a<-get
                         b<-get
-                        return (RAPreamble a b)
+                        return (RaPreamble a b)
                       1 -> do
                         a<-get
                         b<-get
                         c<-get
-                        return (RAResponse a b c)
+                        return (RaResponse a b c)
                       2 -> do
                         a<-get
                         b<-get
                         c<-get
-                        return (RRCConnectionRequest a b c)
+                        return (RrcConnectionRequest a b c)
                       3 -> do
                         a<-get
                         b<-get
                         c<-get
-                        return (RRCConnectionSetup a b c)
+                        return (RrcConnectionSetup a b c)
                       4 -> do
                         a<-get
                         b<-get
-                        return (RRCConnectionSetupComplete a b)
+                        return (RrcConnectionSetupComplete a b)
                       7 -> do
                         a<-get
                         b<-get
@@ -145,27 +145,27 @@ instance Binary RrcMessage
                       9 -> do
                         a<-get
                         b<-get
-                        return (UECapabilityEnquiry a b)
+                        return (UeCapabilityEnquiry a b)
                       10 -> do
                         a<-get
                         b<-get
-                        return (UECapabilityInformation a b)
+                        return (UeCapabilityInformation a b)
                       11 -> do
                         a<-get
                         b<-get
-                        return (RRCConnectionReconfiguration a b)
+                        return (RrcConnectionReconfiguration a b)
                       12 -> do
                         a<-get
                         b<-get
-                        return (RRCConnectionReconfigurationComplete a b)
+                        return (RrcConnectionReconfigurationComplete a b)
                       14 -> do
                         a<-get
                         b<-get
-                        return (RRCConnectionReject a b)
+                        return (RrcConnectionReject a b)
                       15 -> do
                         a<-get
-                        return (RRCConnectionAccept a)
-                      16 -> return (EndOfProgram)
+                        return (RrcConnectionAccept a)
+                      16 -> return (EndOfProgramEnb)
 
 --Enumerated Data Types
 
@@ -188,7 +188,7 @@ instance Binary UeIdRntiType
                       1 -> do
                         return C_RNTI 
 
-data RAT =
+data Rat =
     E_UTRA
   | UTRA
   | GERAN_CS
@@ -196,7 +196,7 @@ data RAT =
   | CDMA2000
     deriving (Eq, Generic, Show)
 
-instance Binary RAT
+instance Binary Rat
    where put m = do
                   case m of
                    E_UTRA -> do

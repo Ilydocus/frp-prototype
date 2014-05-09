@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 module S1Messages
-       ( S1APMessage (..)
+       ( S1ApMessage (..)
        , encode
        , decode
-       , EPSAttach (..)
+       , EpsAttach (..)
        , S1MessageType (..)
        , LastMessage (..)  
        ) where
@@ -17,40 +17,40 @@ import Identifiers
 import Network.Socket
 import RrcMessages
 
-data S1APMessage =
-    S1APInitialUEMessage {eNB_UE_S1AP_Id :: !Int
-                         ,epsAttachType :: EPSAttach
-                         ,identity :: !IMSI}
-  | S1APInitialContextSetupRequest {mme_UE_S1AP_Id :: !Int
-                                   ,eNB_UE_S1AP_Id :: !Int
+data S1ApMessage =
+    S1ApInitialUeMessage {enb_Ue_S1Ap_Id :: !Int
+                         ,epsAttachType :: EpsAttach
+                         ,identity :: !Imsi}
+  | S1ApInitialContextSetupRequest {mme_Ue_S1Ap_Id :: !Int
+                                   ,enb_Ue_S1Ap_Id :: !Int
                                    ,securityKey :: !Int
                                    ,epsBearerId :: !String}
-  | S1APInitialContextSetupResponse {eNB_UE_S1AP_Id :: !Int
+  | S1ApInitialContextSetupResponse {enb_Ue_S1Ap_Id :: !Int
                                     ,eRabId :: !String}
-  | EndOfProgramMME   
+  | EndOfProgramMme   
   deriving (Eq, Generic, Show)
 
-instance Binary S1APMessage
+instance Binary S1ApMessage
          where
            put m = do
                     --Add a message type prefix 
                     case m of
-                     S1APInitialUEMessage a b c -> do
+                     S1ApInitialUeMessage a b c -> do
                                      putWord8 0
                                      put a
                                      put b
                                      put c
-                     S1APInitialContextSetupRequest a b c d -> do
+                     S1ApInitialContextSetupRequest a b c d -> do
                                      putWord8 1
                                      put a
                                      put b
                                      put c
                                      put d
-                     S1APInitialContextSetupResponse a b -> do
+                     S1ApInitialContextSetupResponse a b -> do
                                      putWord8 2
                                      put a
                                      put b
-                     EndOfProgramMME -> putWord8 3
+                     EndOfProgramMme -> putWord8 3
            
            get = do id<- getWord8
                     case id of
@@ -58,40 +58,40 @@ instance Binary S1APMessage
                         a<-get
                         b<-get
                         c<-get
-                        return (S1APInitialUEMessage a b c)
+                        return (S1ApInitialUeMessage a b c)
                       1 -> do
                         a<-get
                         b<-get
                         c<-get
                         d<-get
-                        return (S1APInitialContextSetupRequest a b c d)
+                        return (S1ApInitialContextSetupRequest a b c d)
                       2 -> do
                         a<-get
                         b<-get
-                        return (S1APInitialContextSetupResponse a b)
-                      3 -> return (EndOfProgramMME)
+                        return (S1ApInitialContextSetupResponse a b)
+                      3 -> return (EndOfProgramMme)
                       
 
 --Enumerated Data Types
 
-data EPSAttach =
-      EPSAttach
-    | EPSOther
+data EpsAttach =
+      EpsAttach
+    | EpsOther
     deriving (Eq, Generic, Show)
              
-instance Binary EPSAttach
+instance Binary EpsAttach
    where put m = do
                   case m of
-                   EPSAttach -> do
+                   EpsAttach -> do
                     putWord8 0
-                   EPSOther -> do
+                   EpsOther -> do
                     putWord8 1
          get = do id<- getWord8
                   case id of
                       0 ->do
-                        return EPSAttach
+                        return EpsAttach
                       1 -> do
-                        return EPSOther
+                        return EpsOther
                         
 --Type for filtering the events 
 data S1MessageType =
@@ -104,5 +104,5 @@ data S1MessageType =
 --Specific type for the last message of the program
 data LastMessage =
     ReconfigurationFailed (RrcMessage,Socket)
-  | ReconfigurationCompleted (S1APMessage,Socket,RrcMessage, Socket)
+  | ReconfigurationCompleted (S1ApMessage,Socket,RrcMessage, Socket)
     deriving (Eq,Show)
