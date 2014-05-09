@@ -12,7 +12,6 @@ import System.IO
 import Data.Binary
 
 -- IMSI
-
 data IMSI = IMSI {
   mcc :: !String,
   mnc :: !String,
@@ -22,7 +21,7 @@ data IMSI = IMSI {
 
 instance Show IMSI
          where
-           show m = show ((mcc m)++"-"++(mnc m)++"-"++(msin m))--(show (mcc m)) ++ (show (mnc m)) ++ (show (msin m))
+           show m = show ((mcc m)++"-"++(mnc m)++"-"++(msin m))
 
 instance Binary IMSI
          where
@@ -41,11 +40,9 @@ genIMSI seed1 seed2= --all the imsi are swedish ones
   IMSI {mcc = "260", mnc = genRandId 2 seed1 , msin = genRandId 10 seed2}
 
 -- Random id string
-           
 genRandId :: Int -> Int -> String
 genRandId size seed =
   take size (randomRs ('0','9') (mkStdGen seed))
-   {-| size <= 0 = "" 
-   | otherwise = (take size (randomRs ('0','9') (mkStdGen seed))) ++ (genRandId (size -1) (seed))-}
+
 
  
