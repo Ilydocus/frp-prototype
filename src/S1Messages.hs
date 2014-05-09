@@ -9,8 +9,8 @@ module S1Messages
        ) where
 
 import Data.Binary
-import Data.Binary.Put --added cause of error message
-import Data.Binary.Get --same
+import Data.Binary.Put
+import Data.Binary.Get 
 import GHC.Generics
 import qualified Data.ByteString as BS
 import Identifiers
@@ -19,22 +19,21 @@ import RrcMessages
 
 data S1APMessage =
     S1APInitialUEMessage {eNB_UE_S1AP_Id :: !Int
-               ,epsAttachType :: EPSAttach
-               ,identity :: !IMSI}
+                         ,epsAttachType :: EPSAttach
+                         ,identity :: !IMSI}
   | S1APInitialContextSetupRequest {mme_UE_S1AP_Id :: !Int
-               ,eNB_UE_S1AP_Id :: !Int
-               ,securityKey :: !Int
-               ,epsBearerId :: !String}
+                                   ,eNB_UE_S1AP_Id :: !Int
+                                   ,securityKey :: !Int
+                                   ,epsBearerId :: !String}
   | S1APInitialContextSetupResponse {eNB_UE_S1AP_Id :: !Int
-               ,eRabId :: !String}--plus de mmeId car casse-pied
-  | UplinkNASTransport {message :: !String}
+                                    ,eRabId :: !String}
   | EndOfProgramMME   
   deriving (Eq, Generic, Show)
 
 instance Binary S1APMessage
          where
            put m = do
-                    --Add a message type prefix to the message
+                    --Add a message type prefix 
                     case m of
                      S1APInitialUEMessage a b c -> do
                                      putWord8 0
@@ -51,10 +50,7 @@ instance Binary S1APMessage
                                      putWord8 2
                                      put a
                                      put b
-                     UplinkNASTransport a -> do
-                                     putWord8 3
-                                     put a
-                     EndOfProgramMME -> putWord8 4
+                     EndOfProgramMME -> putWord8 3
            
            get = do id<- getWord8
                     case id of
@@ -73,10 +69,7 @@ instance Binary S1APMessage
                         a<-get
                         b<-get
                         return (S1APInitialContextSetupResponse a b)
-                      3 -> do
-                        a<-get
-                        return (UplinkNASTransport a)
-                      4 -> return (EndOfProgramMME)
+                      3 -> return (EndOfProgramMME)
                       
 
 --Enumerated Data Types
