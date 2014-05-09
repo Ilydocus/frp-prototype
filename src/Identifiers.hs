@@ -7,8 +7,6 @@ module Identifiers (
 
 import System.Random
 import Control.Monad.IO.Class ()
-import Control.Monad
-import System.IO
 import Data.Binary
 
 -- IMSI
