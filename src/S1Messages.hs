@@ -4,7 +4,8 @@ module S1Messages
        , encode
        , decode
        , EPSAttach (..)
-       , S1MessageType (..) 
+       , S1MessageType (..)
+       , LastMessage (..)  
        ) where
 
 import Data.Binary
@@ -12,8 +13,9 @@ import Data.Binary.Put --added cause of error message
 import Data.Binary.Get --same
 import GHC.Generics
 import qualified Data.ByteString as BS
-
 import Identifiers
+import Network.Socket
+import RrcMessages
 
 data S1APMessage =
     S1APInitialUEMessage {eNB_UE_S1AP_Id :: !Int
@@ -98,7 +100,7 @@ instance Binary EPSAttach
                       1 -> do
                         return EPSOther
                         
---Type for filtering the events in the mme
+--Type for filtering the events 
 data S1MessageType =
     S1ApIUeM
   | S1ApICSRequest
@@ -106,3 +108,8 @@ data S1MessageType =
   | EndProgMme
     deriving (Eq, Show)
 
+--Specific type for the last message of the program
+data LastMessage =
+    ReconfigurationFailed (RrcMessage,Socket)
+  | ReconfigurationCompleted (S1APMessage,Socket,RrcMessage, Socket)
+    deriving (Eq,Show)

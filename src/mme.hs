@@ -63,8 +63,8 @@ setupNetwork message state logh = do
     bUeContexts :: Behavior t (IO (TVar MmeMap))
     bUeContexts = pure state
     
-    initUeContexts :: IO(TVar MmeMap) -> (S1APMessage, Socket) -> IO ()
-    initUeContexts state (message, socket) = do
+    initUeContext :: IO(TVar MmeMap) -> (S1APMessage, Socket) -> IO ()
+    initUeContext state (message, socket) = do
       liftedState <- liftIO $ state
       atomically $ modifyTVar liftedState (\mmeMap -> Map.insert (eNB_UE_S1AP_Id message) (initialUeContext_mme (mme_UE_S1AP_Id message) (S1Messages.securityKey message)) mmeMap )
 
@@ -86,7 +86,7 @@ setupNetwork message state logh = do
 
   --Output
   reactimate $ sendResponse <$> eResponseS1ApIUeM
-  reactimate $ initUeContexts state <$> eResponseS1ApIUeM
+  reactimate $ (initUeContext <$> bUeContexts) <@> eResponseS1ApIUeM
   reactimate $ writeToLog logh . showMessage <$> eMessage
   reactimate $ writeToLog logh . showNbMessages <$> eNbMessages
   reactimate $ (finalLog_mme logh <$> bUeContexts)  <@> eInitialContextSetupResponse
