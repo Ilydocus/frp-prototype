@@ -5,7 +5,6 @@ module RrcMessages
        , decode
        , UeIdRntiType (..)
        , RAT (..)
-       , DedicatedInfoType (..)
        , RrcMessageType (..)  
        ) where
 
@@ -24,30 +23,28 @@ data RrcMessage =
                ,ueRaRntiValue :: !Int
                ,ueIdCRnti :: !Int}
   | RRCConnectionRequest {ueIdRntiType :: UeIdRntiType
-               ,ueIdRntiValue :: !Int
-               ,ueIdentity :: !IMSI}
+                          ,ueIdRntiValue :: !Int
+                          ,ueIdentity :: !IMSI}
   | RRCConnectionReject {ueCRnti :: !Int
                         ,waitingTime :: !Int}
   | RRCConnectionAccept {ueCRnti :: !Int}
   | RRCConnectionSetup {ueIdRntiType :: UeIdRntiType
-               ,ueIdRntiValue :: !Int
-               ,srbIdentity :: !String}
+                        ,ueIdRntiValue :: !Int
+                        ,srbIdentity :: !String}
   | RRCConnectionSetupComplete {ueCRnti :: !Int,
-      selectedPlmnIdentity :: !String}
+                                selectedPlmnIdentity :: !String}
   | SecurityModeCommand {ueCRnti :: !Int
-                         ,message_security :: BL.ByteString}
+                        ,message_security :: BL.ByteString}
   | SecurityModeComplete {ueCRnti :: !Int
-                          ,securityModeSuccess :: !Bool}
+                         ,securityModeSuccess :: !Bool}
   | UECapabilityEnquiry {ueCRnti :: !Int
-                         ,ueCapabilityRequest :: [RAT]}
+                        ,ueCapabilityRequest :: [RAT]}
   | UECapabilityInformation {ueCRnti :: !Int
-                             ,ueCapabilityRatList :: [(RAT,Bool)]}
+                            ,ueCapabilityRatList :: [(RAT,Bool)]}
   | RRCConnectionReconfiguration {ueCRnti :: !Int
-                                  ,epsRadioBearerIdentity :: !String}
+                                 ,epsRadioBearerIdentity :: !String}
   | RRCConnectionReconfigurationComplete {ueCRnti :: !Int
-                                          ,epsRadioBearerActivated :: !Bool}
-  | UplinkInformationTransfer {dedicatedInfoType :: DedicatedInfoType
-                              ,message :: !String }
+                                         ,epsRadioBearerActivated :: !Bool}
   |EndOfProgram
   deriving (Eq, Generic, Show)
 
@@ -103,10 +100,6 @@ instance Binary RrcMessage
                                      putWord8 12
                                      put a
                                      put b
-                     UplinkInformationTransfer a b -> do
-                                     putWord8 16
-                                     put a
-                                     put b
                      RRCConnectionReject a b -> do
                                      putWord8 14
                                      put a
@@ -114,25 +107,8 @@ instance Binary RrcMessage
                      RRCConnectionAccept a -> do
                                      putWord8 15
                                      put a
-                     EndOfProgram -> putWord8 17
-                     
+                     EndOfProgram -> putWord8 16
 
-                    
-           {-put (RAPreamble m) = do
-             putWord8 0 --differentiate the messages
-             put m
-           put (RAResponse b) = do
-             putWord8 1
-             put b
-           put (RRCConnectionRequest b) = do
-             putWord8 2
-             put b
-           put (RRCConnectionSetup b) = do
-             putWord8 3
-             put b
-           put (RRCConnectionComplete b) = do
-             putWord8 4
-             put b-}
            get = do id<- getWord8
                     case id of
                       0 ->do
@@ -182,10 +158,6 @@ instance Binary RrcMessage
                         a<-get
                         b<-get
                         return (RRCConnectionReconfigurationComplete a b)
-                      16 -> do
-                        a<-get
-                        b<-get
-                        return (UplinkInformationTransfer a b)
                       14 -> do
                         a<-get
                         b<-get
@@ -193,52 +165,7 @@ instance Binary RrcMessage
                       15 -> do
                         a<-get
                         return (RRCConnectionAccept a)
-                      17 -> return (EndOfProgram)
-                 
-                         {-get::(RAResponse i) = do i<- get
-                                  return (RAResponse i)-}
-                    {-case i of
-                      RAPreamble m -> return (RAPreamble m)
-                      RAResponse b -> return (RAResponse b)-}
-                     --need to be added to the other instance binary, ask why
-          
-                    
-{-instance Show RrcMessage where
-  show (RAPreamble m) = "RAPreamble "++show m
-  show (RAResponse b) = "RAResponse "++ show b
-  show (RRCConnectionRequest m) = "RRCConnectionRequest "++show m
-  show (RRCConnectionSetup m) = "RRCConnectionSetup "++show m
-  show (RRCConnectionSetupComplete m) = "RRCConnectionComplete "++show m-}
-
-{-data CriticalExtensions =
-    RRCConnectionRequestIEs {
-    ueIdentity :: InitialUEIdentity,
-    establishmentCause :: EstablishmentCause,
-    spare :: Int--BS.ByteString --size 1
-    }
-  |  CriticalExtensionFuture !Int --to be changed
-  deriving (Eq, Show, Generic)
-
-instance Binary CriticalExtensions
-
-data InitialUEIdentity =
-        STMSI {stmsi :: !Int }--See real implementation
-     |  RandomValue BS.ByteString --size 40
-     deriving (Eq, Show, Generic)
-instance Binary InitialUEIdentity
-
-
-data EstablishmentCause =
-    Emergency
-  | HighPriorityAccess
-  | MtAccess
-  | MoSignalling
-  | MoData
-  | DelayTolerantAccess
-  | Spare2
-  | Spare1
-  deriving (Eq, Show, Generic)
-instance Binary EstablishmentCause -}
+                      16 -> return (EndOfProgram)
 
 --Enumerated Data Types
 
@@ -295,25 +222,7 @@ instance Binary RAT
                       4 -> do
                         return CDMA2000 
 
-data DedicatedInfoType =
-     DedicatedInfoNAS
-   | Other
-     deriving (Eq, Generic, Show)
-
-instance Binary DedicatedInfoType
-   where put m = do
-                  case m of
-                   DedicatedInfoNAS -> do
-                    putWord8 0
-                   Other -> do
-                    putWord8 1
-         get = do id<- getWord8
-                  case id of
-                      0 ->do
-                        return DedicatedInfoNAS
-                      1 -> do
-                        return Other
-
+--To identify the incoming messages
 data RrcMessageType =
     RaP
   | RaR
