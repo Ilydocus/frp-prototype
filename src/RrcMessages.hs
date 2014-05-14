@@ -12,6 +12,7 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import GHC.Generics
+import Control.Applicative
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Identifiers
@@ -48,124 +49,41 @@ data RrcMessage =
   |EndOfProgramEnb
   deriving (Eq, Generic, Show)
 
-instance Binary RrcMessage
-         where
-           put m = do
-                    --Add a message type prefix
-                    case m of
-                     RaPreamble a b -> do
-                                     putWord8 0
-                                     put a
-                                     put b
-                     RaResponse a b c -> do
-                                     putWord8 1
-                                     put a
-                                     put b
-                                     put c
-                     RrcConnectionRequest a b c -> do
-                                     putWord8 2
-                                     put a
-                                     put b
-                                     put c
-                     RrcConnectionSetup a b c -> do
-                                     putWord8 3
-                                     put a
-                                     put b
-                                     put c
-                     RrcConnectionSetupComplete a b -> do
-                                     putWord8 4
-                                     put a
-                                     put b
-                     SecurityModeCommand a b-> do
-                                     putWord8 7
-                                     put a
-                                     put b
-                     SecurityModeComplete a b -> do
-                                     putWord8 8
-                                     put a
-                                     put b
-                     UeCapabilityEnquiry a b -> do
-                                     putWord8 9
-                                     put a
-                                     put b
-                     UeCapabilityInformation a b -> do
-                                     putWord8 10
-                                     put a
-                                     put b
-                     RrcConnectionReconfiguration a b -> do
-                                     putWord8 11
-                                     put a
-                                     put b
-                     RrcConnectionReconfigurationComplete a b -> do
-                                     putWord8 12
-                                     put a
-                                     put b
-                     RrcConnectionReject a b -> do
-                                     putWord8 14
-                                     put a
-                                     put b
-                     RrcConnectionAccept a -> do
-                                     putWord8 15
-                                     put a
-                     EndOfProgramEnb -> putWord8 16
+instance Binary RrcMessage where
+  put m = do
+    --Add a message type prefix
+    case m of
+      RaPreamble a b -> putWord8 0 >> put a >> put b
+      RaResponse a b c -> putWord8 1 >> put a >> put b >> put c
+      RrcConnectionRequest a b c -> putWord8 2 >> put a >> put b >> put c
+      RrcConnectionSetup a b c -> putWord8 3 >> put a >> put b >> put c
+      RrcConnectionSetupComplete a b -> putWord8 4 >> put a >> put b
+      SecurityModeCommand a b-> putWord8 7 >> put a >> put b
+      SecurityModeComplete a b -> putWord8 8 >> put a >> put b
+      UeCapabilityEnquiry a b -> putWord8 9 >> put a >> put b
+      UeCapabilityInformation a b -> putWord8 10 >> put a >> put b
+      RrcConnectionReconfiguration a b -> putWord8 11 >> put a >> put b
+      RrcConnectionReconfigurationComplete a b -> putWord8 12 >> put a >> put b
+      RrcConnectionReject a b -> putWord8 14 >> put a >> put b
+      RrcConnectionAccept a -> putWord8 15 >> put a
+      EndOfProgramEnb -> putWord8 16
 
-           get = do id<- getWord8
-                    case id of
-                      0 ->do
-                        a<-get
-                        b<-get
-                        return (RaPreamble a b)
-                      1 -> do
-                        a<-get
-                        b<-get
-                        c<-get
-                        return (RaResponse a b c)
-                      2 -> do
-                        a<-get
-                        b<-get
-                        c<-get
-                        return (RrcConnectionRequest a b c)
-                      3 -> do
-                        a<-get
-                        b<-get
-                        c<-get
-                        return (RrcConnectionSetup a b c)
-                      4 -> do
-                        a<-get
-                        b<-get
-                        return (RrcConnectionSetupComplete a b)
-                      7 -> do
-                        a<-get
-                        b<-get
-                        return (SecurityModeCommand a b)
-                      8 -> do
-                        a<-get
-                        b<-get
-                        return (SecurityModeComplete a b)
-                      9 -> do
-                        a<-get
-                        b<-get
-                        return (UeCapabilityEnquiry a b)
-                      10 -> do
-                        a<-get
-                        b<-get
-                        return (UeCapabilityInformation a b)
-                      11 -> do
-                        a<-get
-                        b<-get
-                        return (RrcConnectionReconfiguration a b)
-                      12 -> do
-                        a<-get
-                        b<-get
-                        return (RrcConnectionReconfigurationComplete a b)
-                      14 -> do
-                        a<-get
-                        b<-get
-                        return (RrcConnectionReject a b)
-                      15 -> do
-                        a<-get
-                        return (RrcConnectionAccept a)
-                      16 -> return (EndOfProgramEnb)
+  get = do id<- getWord8
+           case id of
+             0 -> RaPreamble <$> get <*> get
+             1 -> RaResponse <$> get <*> get <*> get
+             2 -> RrcConnectionRequest <$> get <*> get <*> get
+             3 -> RrcConnectionSetup <$> get <*> get <*> get
+             4 -> RrcConnectionSetupComplete <$> get <*> get
+             7 -> SecurityModeCommand <$> get <*> get
+             8 -> SecurityModeComplete <$> get <*> get
+             9 -> UeCapabilityEnquiry <$> get <*> get
+             10 -> UeCapabilityInformation <$> get <*> get
+             11 -> RrcConnectionReconfiguration <$> get <*> get
+             12 -> RrcConnectionReconfigurationComplete <$> get <*> get
+             14 -> RrcConnectionReject <$> get <*> get
+             15 -> RrcConnectionAccept <$> get 
+             16 -> return (EndOfProgramEnb)
 
 --Enumerated Data Types
 
