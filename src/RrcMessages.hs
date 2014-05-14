@@ -68,22 +68,23 @@ instance Binary RrcMessage where
       RrcConnectionAccept a -> putWord8 15 >> put a
       EndOfProgramEnb -> putWord8 16
 
-  get = do id<- getWord8
-           case id of
-             0 -> RaPreamble <$> get <*> get
-             1 -> RaResponse <$> get <*> get <*> get
-             2 -> RrcConnectionRequest <$> get <*> get <*> get
-             3 -> RrcConnectionSetup <$> get <*> get <*> get
-             4 -> RrcConnectionSetupComplete <$> get <*> get
-             7 -> SecurityModeCommand <$> get <*> get
-             8 -> SecurityModeComplete <$> get <*> get
-             9 -> UeCapabilityEnquiry <$> get <*> get
-             10 -> UeCapabilityInformation <$> get <*> get
-             11 -> RrcConnectionReconfiguration <$> get <*> get
-             12 -> RrcConnectionReconfigurationComplete <$> get <*> get
-             14 -> RrcConnectionReject <$> get <*> get
-             15 -> RrcConnectionAccept <$> get 
-             16 -> return (EndOfProgramEnb)
+  get = do
+    id<- getWord8
+    case id of
+      0 -> RaPreamble <$> get <*> get
+      1 -> RaResponse <$> get <*> get <*> get
+      2 -> RrcConnectionRequest <$> get <*> get <*> get
+      3 -> RrcConnectionSetup <$> get <*> get <*> get
+      4 -> RrcConnectionSetupComplete <$> get <*> get
+      7 -> SecurityModeCommand <$> get <*> get
+      8 -> SecurityModeComplete <$> get <*> get
+      9 -> UeCapabilityEnquiry <$> get <*> get
+      10 -> UeCapabilityInformation <$> get <*> get
+      11 -> RrcConnectionReconfiguration <$> get <*> get
+      12 -> RrcConnectionReconfigurationComplete <$> get <*> get
+      14 -> RrcConnectionReject <$> get <*> get
+      15 -> RrcConnectionAccept <$> get
+      16 -> return (EndOfProgramEnb)
 
 --Enumerated Data Types
 
@@ -92,19 +93,16 @@ data UeIdRntiType =
   | C_RNTI
     deriving (Eq, Generic, Show)
              
-instance Binary UeIdRntiType
-   where put m = do
-                  case m of
-                   RA_RNTI -> do
-                    putWord8 0
-                   C_RNTI -> do
-                    putWord8 1
-         get = do id<- getWord8
-                  case id of
-                      0 ->do
-                        return RA_RNTI
-                      1 -> do
-                        return C_RNTI 
+instance Binary UeIdRntiType where
+  put m = do
+    case m of
+      RA_RNTI -> putWord8 0
+      C_RNTI -> putWord8 1
+  get = do
+    id<- getWord8
+    case id of
+      0 -> return RA_RNTI
+      1 -> return C_RNTI 
 
 data Rat =
     E_UTRA
@@ -114,31 +112,22 @@ data Rat =
   | CDMA2000
     deriving (Eq, Generic, Show)
 
-instance Binary Rat
-   where put m = do
-                  case m of
-                   E_UTRA -> do
-                    putWord8 0
-                   UTRA -> do
-                    putWord8 1
-                   GERAN_CS -> do
-                    putWord8 2
-                   GERAN_PS -> do
-                    putWord8 3
-                   CDMA2000 -> do
-                    putWord8 4 
-         get = do id<- getWord8
-                  case id of
-                      0 ->do
-                        return E_UTRA
-                      1 -> do
-                        return UTRA
-                      2 -> do
-                        return GERAN_CS
-                      3 -> do
-                        return GERAN_PS
-                      4 -> do
-                        return CDMA2000 
+instance Binary Rat where
+  put m = do
+    case m of
+      E_UTRA -> putWord8 0
+      UTRA -> putWord8 1
+      GERAN_CS -> putWord8 2
+      GERAN_PS -> putWord8 3
+      CDMA2000 -> putWord8 4
+  get = do
+    id<- getWord8
+    case id of
+      0 -> return E_UTRA
+      1 -> return UTRA
+      2 -> return GERAN_CS
+      3 -> return GERAN_PS
+      4 -> return CDMA2000 
 
 --To identify the incoming messages
 data RrcMessageType =
