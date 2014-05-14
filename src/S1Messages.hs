@@ -14,6 +14,7 @@ import Data.Binary.Get
 import GHC.Generics
 import qualified Data.ByteString as BS
 import Identifiers
+import Control.Applicative
 import Network.Socket
 import RrcMessages
 
@@ -30,46 +31,22 @@ data S1ApMessage =
   | EndOfProgramMme   
   deriving (Eq, Generic, Show)
 
-instance Binary S1ApMessage
-         where
-           put m = do
-                    --Add a message type prefix 
-                    case m of
-                     S1ApInitialUeMessage a b c -> do
-                                     putWord8 0
-                                     put a
-                                     put b
-                                     put c
-                     S1ApInitialContextSetupRequest a b c d -> do
-                                     putWord8 1
-                                     put a
-                                     put b
-                                     put c
-                                     put d
-                     S1ApInitialContextSetupResponse a b -> do
-                                     putWord8 2
-                                     put a
-                                     put b
-                     EndOfProgramMme -> putWord8 3
-           
-           get = do id<- getWord8
-                    case id of
-                      0 ->do
-                        a<-get
-                        b<-get
-                        c<-get
-                        return (S1ApInitialUeMessage a b c)
-                      1 -> do
-                        a<-get
-                        b<-get
-                        c<-get
-                        d<-get
-                        return (S1ApInitialContextSetupRequest a b c d)
-                      2 -> do
-                        a<-get
-                        b<-get
-                        return (S1ApInitialContextSetupResponse a b)
-                      3 -> return (EndOfProgramMme)
+instance Binary S1ApMessage where
+  put m = do
+    --Add a message type prefix
+    case m of
+      S1ApInitialUeMessage a b c -> putWord8 5 >> put a >> put b >> put c
+      S1ApInitialContextSetupRequest a b c d -> putWord8 6 >> put a >> put b >> put c >> put d
+      S1ApInitialContextSetupResponse a b -> putWord8 13 >> put a >> put b 
+      EndOfProgramMme -> putWord8 17
+
+  get = do
+    id<- getWord8
+    case id of
+      5 -> S1ApInitialUeMessage <$> get <*> get <*> get
+      6 -> S1ApInitialContextSetupRequest <$> get <*> get <*> get <*> get
+      13 -> S1ApInitialContextSetupResponse <$> get <*> get
+      17 -> return (EndOfProgramMme)
                       
 
 --Enumerated Data Types
@@ -79,19 +56,16 @@ data EpsAttach =
     | EpsOther
     deriving (Eq, Generic, Show)
              
-instance Binary EpsAttach
-   where put m = do
-                  case m of
-                   EpsAttach -> do
-                    putWord8 0
-                   EpsOther -> do
-                    putWord8 1
-         get = do id<- getWord8
-                  case id of
-                      0 ->do
-                        return EpsAttach
-                      1 -> do
-                        return EpsOther
+instance Binary EpsAttach where
+  put m = do
+    case m of
+      EpsAttach -> putWord8 0
+      EpsOther -> putWord8 1
+  get = do
+    id<- getWord8
+    case id of
+      0 -> return EpsAttach
+      1 -> return EpsOther
                         
 --Type for filtering the events 
 data S1MessageType =
