@@ -27,21 +27,21 @@ Several sequence diagrams describing the messaging sequence according to differe
 
 #How does it work?
 
-##For the UE program
+##UE program
 
 The UEs are created using the function powerOn (ue.hs, l.45).
 
 The first message (RaPreamble) is sent from within the function eventLoop, line 80 (ue.hs).
 Subsequent messages are handled by the FRP event network which contains all the actions that executes when events occur (either an external event (a new message is received), or an internal one (a RaResponse is ready to be sent)). The event network is  described in the function setupNetwork (ue.hs, l.98).
 
-##For the eNodeB program
+##eNodeB program
 
 The messages coming from the UEs and the MME are handled in the FRP event network. It is described in the function setupNetwork (eNodeB.hs, l.69).
 
-##For the MME program
+##MME program
 
 The messages coming from the eNodeB are handled in the FRP event network. It is described in the function setupNetwork (mme.hs, l.51).
 
-##For the messages
+##Messages
 
 RRC and S1 messages are described in the RrcMessages.hs and S1Messages.hs files.
