@@ -3,7 +3,7 @@ frp-prototype
 
 #Description
 
-Implementation of a simplified version of the "attach UE" procedure in the RRC protocol of LTE, using the functional reactive programming (FRP) paradigm and Haskell.
+Implementation of a simplified version of the connection setup procedure of the RRC protocol in LTE, using the functional reactive programming (FRP) paradigm and Haskell.
 
 The Haskell libray used for FRP is [Reactive-banana](http://www.haskell.org/haskellwiki/Reactive-banana).
 

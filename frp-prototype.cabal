@@ -5,9 +5,9 @@ name:                frp-prototype
 version:             0.1.0.0
 synopsis:            FRP implementation of the connection setup procedure of the RRC Protocol. Uses the reactive-banana framework.
 -- description:         
--- license:             
+license:             BSD3            
 license-file:        LICENSE
-author:              Klervie Tocze
+author:              Klervie Toczé
 -- maintainer:          
 -- copyright:           
 category:            Telecom prototype
