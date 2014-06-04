@@ -55,7 +55,7 @@ powerOn logh ueId =
       eventLoop sources sock ueId
       endProcedure <- getCurrentTime
       let diff = endProcedure `diffUTCTime` startProcedure    
-      writeToLog logh $  "Terminated  UE " ++ (show ueId) ++ " execution time: " ++ (show diff)
+      writeToLog logh $  "Terminated  UE " ++ (show ueId) ++ " execution time(UeSide): " ++ (show diff) ++ " with begin time " ++ (show startProcedure)
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket
