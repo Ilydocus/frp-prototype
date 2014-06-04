@@ -28,17 +28,17 @@ import LogTools
 main :: IO ()
 main =
   withSocketsDo $ do    
-
+    let nbOfUes = 100
     logh <- openFile "log_ue.txt" WriteMode
     
     startTime <- getCurrentTime
-    ues <- mapM (async . powerOn logh) [1..100] --nb of UEs
+    ues <- mapM (async . powerOn logh) [1..nbOfUes] 
     mapM_ wait ues
     endTime <- getCurrentTime
 
     endOfProgram   
     let diff = endTime `diffUTCTime` startTime
-    writeToLog logh $ "Time for the UEs procedures: " ++ (show diff)
+    writeToLog logh $ "Time for the " ++ (show nbOfUes) ++ " UEs procedures: " ++ (show diff)
     hClose logh
 
 powerOn :: Handle -> Int -> IO ()
@@ -51,8 +51,11 @@ powerOn logh ueId =
       sources <- newAddHandler
       network <- compile $ setupNetwork sources ueId logh
       actuate network
+      startProcedure <- getCurrentTime
       eventLoop sources sock ueId
-      writeToLog logh $  "Terminated  UE " ++ (show ueId)
+      endProcedure <- getCurrentTime
+      let diff = endProcedure `diffUTCTime` startProcedure    
+      writeToLog logh $  "Terminated  UE " ++ (show ueId) ++ " execution time: " ++ (show diff)
       return ()
 
 connectedSocket :: HostName -> ServiceName -> IO Socket
